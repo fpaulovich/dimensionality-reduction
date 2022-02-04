@@ -1,14 +1,64 @@
 import numpy as np
-from numpy import random
 import math
-from sklearn import decomposition
 
-from sklearn.datasets import load_iris
-import matplotlib.pyplot as plt
+from numpy import random
+from numba import njit, prange
 
-from distance_matrix import DistanceMatrix
 from scipy.spatial import distance
-import distance_matrix as dm
+
+
+# @njit(parallel=False, fastmath=False)
+def create_distance_matrix(X, distance_function):
+    size = len(X)
+    distance_matrix = np.zeros(int(size * (size + 1) / 2), dtype=np.float32)
+
+    k = 0
+    for i in range(size):
+        for j in range(i, size):
+            distance_matrix[k] = distance_function(X[i], X[j])
+            k = k + 1
+
+    return distance_matrix
+
+
+@njit(parallel=True, fastmath=False)
+def move(ins1, distance_matrix, projection, learning_rate):
+    size = len(projection)
+    total = len(distance_matrix)
+    error = 0
+
+    for ins2 in prange(size):
+        if ins1 != ins2:
+            x1x2 = projection[ins2][0] - projection[ins1][0]
+            y1y2 = projection[ins2][1] - projection[ins1][1]
+            dr2 = max(math.sqrt(x1x2 * x1x2 + y1y2 * y1y2), 0.0001)
+
+            # getting te index in the distance matrix and getting the value
+            r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j)
+            s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j)
+            drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
+
+            # calculate the movement
+            delta = (drn - dr2)
+            error += math.fabs(delta)
+
+            # moving
+            projection[ins2][0] += learning_rate * delta * (x1x2 / dr2)
+            projection[ins2][1] += learning_rate * delta * (y1y2 / dr2)
+
+    return error / size
+
+
+@njit(parallel=False, fastmath=False)
+def iteration(index, distance_matrix, projection, learning_rate):
+    size = len(projection)
+    error = 0
+
+    for i in range(size):
+        ins1 = index[i]
+        error += move(ins1, distance_matrix, projection, learning_rate)
+
+    return error / size
 
 
 class ForceScheme:
@@ -16,99 +66,56 @@ class ForceScheme:
     def __init__(self,
                  max_it=100,
                  learning_rate0=0.5,
-                 decay=0.95):
+                 decay=0.95,
+                 tolerance=0.00001,
+                 seed=7):
 
         self.max_it_ = max_it
         self.learning_rate0_ = learning_rate0
         self.decay_ = decay
+        self.tolerance_ = tolerance
+        self.seed_ = seed
         self.embedding_ = None
 
-    def iteration(self, learning_rate: float, distance_matrix: DistanceMatrix):
-        error = 0.0
-        size = distance_matrix.size()
+    def _fit(self, X, y, distance_function):
+        # create a distance matrix
+        distance_matrix = create_distance_matrix(X, distance_function)
+        size = len(X)
 
-        # create random index
-        index = np.arange(size)
-        np.random.shuffle(index)
+        # set the random seed
+        np.random.seed(self.seed_)
 
-        for i in range(size):
-            pivot = index[i]
-            error += self.move(pivot, learning_rate, distance_matrix)
-
-        return error / size
-
-    def move(self, pivot, learning_rate: float, distance_matrix: DistanceMatrix):
-        error = 0.0
-        size = distance_matrix.size()
-
-        for ins in range(size):
-
-            if pivot != ins:
-                x1x2 = self.embedding_[ins][0] - self.embedding_[pivot][0]
-                y1y2 = self.embedding_[ins][1] - self.embedding_[pivot][1]
-                dr2 = math.sqrt(x1x2 * x1x2 + y1y2 * y1y2)
-
-                if dr2 < 0.0001:
-                    dr2 = 0.0001
-
-                # getting te index in the distance matrix and getting the value
-                drn = distance_matrix.get(pivot, ins)
-
-                # calculate the movement
-                delta = (drn - dr2) * math.fabs(drn - dr2)
-                error += math.fabs(delta)
-
-                # moving
-                self.embedding_[ins][0] = self.embedding_[ins][0] + learning_rate * delta * (x1x2 / dr2)
-                self.embedding_[ins][1] = self.embedding_[ins][1] + learning_rate * delta * (y1y2 / dr2)
-
-        return error / size
-
-    def _fit(self, X, y, distance_matrix):
-        # set the initial projection
+        # randomly initialize the projection
         if y is None:
-            pca = decomposition.PCA(n_components=2).fit(X)
-            self.embedding_ = pca.transform(X)
+            self.embedding_ = np.random.random((size, 2))
         else:
             self.embedding_ = y
 
+        # create random index
+        index = np.random.permutation(size)
+
+        # iterate until max_it or if the error does not change more than the tolerance
+        error = math.inf
         for k in range(self.max_it_):
             learning_rate = self.learning_rate0_ * math.pow((1 - k / self.max_it_), self.decay_)
-            error = self.iteration(learning_rate, distance_matrix)
+            new_error = iteration(index, distance_matrix, self.embedding_, learning_rate)
+
+            if math.fabs(new_error - error) < self.tolerance_:
+                break
+
+            error = new_error
 
         # setting the min to (0,0)
         min_x = min(self.embedding_[:, 0])
         min_y = min(self.embedding_[:, 1])
-        for i in range(len(self.embedding_)):
+        for i in range(size):
             self.embedding_[i][0] -= min_x
             self.embedding_[i][1] -= min_y
 
         return self.embedding_
 
     def fit_transform(self, X, y=None, distance_function=distance.euclidean):
-        distance_matrix = dm.DistanceMatrix().fit_transform(X, distance_function)
-        return self._fit(X, y, distance_matrix)
+        return self._fit(X, y, distance_function)
 
     def fit(self, X, y=None, distance_function=distance.euclidean):
-        distance_matrix = dm.DistanceMatrix().fit_transform(X, distance_function)
-        return self._fit(X, y, distance_matrix)
-
-
-def main():
-
-    raw = load_iris(as_frame=True)
-    X = raw.data.to_numpy()
-    y = ForceScheme().fit_transform(X)
-
-    plt.figure()
-    plt.scatter(y[:, 0], y[:, 1], c=raw.target,
-                cmap='tab10', edgecolors='face', linewidths=0.5, s=4)
-    plt.grid(linestyle='dotted')
-    plt.show()
-
-    return
-
-
-if __name__ == "__main__":
-    main()
-    exit(0)
+        return self._fit(X, y, distance_function)
