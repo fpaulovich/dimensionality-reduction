@@ -1,19 +1,22 @@
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
+import sklearn.datasets as datasets
 
 from matplotlib.colors import ListedColormap
 from matplotlib import cm
 
+from force_scheme import ForceScheme
 
-def plot(data, x, y, width, height, label, cmap='Set2'):
-    max_icon_size_width = data.max()[width]
-    max_icon_size_height = data.max()[height]
-    max_icon_size = max(max_icon_size_width, max_icon_size_height)
+from sklearn import preprocessing
+from dgrid import DGrid
 
-    max_width = data.max()[x]
-    max_height = data.max()[y]
+
+def plot(y, icon_width, icon_height, label, cmap='Set2'):
+    max_icon_size = max(icon_width, icon_height)
+
+    max_width = np.amax(y, axis=0)[0]
+    max_height = np.amax(y, axis=0)[1]
 
     min_label = label.min()
     max_label = label.max()
@@ -24,11 +27,11 @@ def plot(data, x, y, width, height, label, cmap='Set2'):
     figure, axes = plt.subplots()
     plt.axis([-max_icon_size, max_width + max_icon_size, -max_icon_size, max_height + max_icon_size])
 
-    for i in range(len(data)):
-        x_ = data.iloc[i][x]
-        y_ = data.iloc[i][y]
+    for i in range(len(y)):
+        x_ = y[i][0]
+        y_ = y[i][1]
         label_ = label[i]
-        icon_size_ = min(data.iloc[i][width], data.iloc[i][height])
+        icon_size_ = max_icon_size #min(data.iloc[i][width], data.iloc[i][height])
 
         circle = plt.Circle((x_, y_), (icon_size_ / 2) * 0.75, color=color_map(norm(label_)))
         axes.add_artist(circle)
@@ -36,60 +39,25 @@ def plot(data, x, y, width, height, label, cmap='Set2'):
     axes.set_aspect(1)
 
 
-def main1():
-    number = '[0035]'
+def main():
+    # load data
+    raw = datasets.load_iris(as_frame=True)
+    X = raw.data.to_numpy()
+    X = preprocessing.StandardScaler().fit_transform(X)
 
-    input_file = "/Users/fpaulovich/Dropbox/Papers/2021/DGrid/tests/" \
-                 "final_tests/original/scatterplot" + number + ".csv"
+    # apply dimensionality reduction
+    y = ForceScheme().fit_transform(X)
+    y_transformed = DGrid(icon_width=1, icon_height=1, delta=10).fit_transform(y)
 
-    original = pd.read_csv(input_file)
-    # DistanceGrid.plot(original, 'ux', 'uy', 'width', 'height', original.loc[:, 'label'], cmap='Set2')
-    # plt.title('Original Scatterplot')
-    # plt.savefig("/Users/paulovich/Desktop/original.png", dpi=400)
-    # # plt.show()
-
-    transformed = DistanceGrid.execute(original, delta=1)
-    DistanceGrid.plot(transformed, 'ux', 'uy', 'width', 'height', original.loc[:, 'label'], cmap='Set2')
+    # plot
+    plot(y_transformed, icon_width=1, icon_height=1, label=raw.target, cmap='Set2')
     plt.title('DGrid Scatterplot')
-    plt.savefig("/Users/fpaulovich/Desktop/transformed.png", dpi=400)
-    # plt.show()
-
-    return
-
-
-def main2():
-    input_file = "/Users/fpaulovich/Documents/protein_folding/matriz_distancia_projection.txt"
-    # input_file = "/Users/fpaulovich/Documents/protein_folding/dmat_8000_projection.txt"
-    projection = pd.read_csv(input_file, sep=' ', header=None)
-    projection = projection.rename(columns={0: "ux", 1: "uy"})
-    projection["width"] = 1
-    projection["height"] = 1
-
-    labels = np.zeros(len(projection))
-
-    for i in range(8000):
-        labels[i] = 0
-
-    for i in range(8000, 16000):
-        labels[i] = 1
-
-    for i in range(16000, 25240):
-        labels[i] = 2
-
-    projection["label"] = labels
-
-    projection.to_csv('/Users/fpaulovich/Desktop/matriz_distancia_projection_dgrid.csv')
-
-    transformed = DistanceGrid.execute(projection, delta=500)
-    DistanceGrid.plot(transformed, 'ux', 'uy', 'width', 'height', transformed.loc[:, 'label'],
-                      cmap=ListedColormap(['blue', 'red', 'green']))
-    plt.title('DGrid Scatterplot')
-    plt.savefig('/Users/fpaulovich/Desktop/transformed.png', dpi=400)
-    # plt.show()
+    # plt.savefig("transformed.png", dpi=400)
+    plt.show()
 
     return
 
 
 if __name__ == "__main__":
-    main1()
+    main()
     exit(0)
