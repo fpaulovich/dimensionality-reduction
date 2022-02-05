@@ -3,7 +3,6 @@ import math
 
 from numpy import random
 from numba import njit, prange
-
 from scipy.spatial import distance
 
 

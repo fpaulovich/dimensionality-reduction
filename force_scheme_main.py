@@ -1,11 +1,10 @@
 import sklearn.datasets as datasets
 import matplotlib.pyplot as plt
+import numpy as np
 
 from timeit import default_timer as timer
 from datetime import timedelta
-
 from sklearn import preprocessing
-
 from force_scheme import ForceScheme
 
 
@@ -17,6 +16,8 @@ def main():
     start = timer()
     y = ForceScheme().fit_transform(X)
     end = timer()
+
+    print(np.amin(y, axis=0))
 
     print('ForceScheme took {0} to execute'.format(timedelta(seconds=end - start)))
 
