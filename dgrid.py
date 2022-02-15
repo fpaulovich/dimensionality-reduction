@@ -9,7 +9,7 @@ class DGrid:
     def __init__(self,
                  icon_width=1,
                  icon_height=1,
-                 delta=1
+                 delta=None
                  ):
         self.icon_width_ = icon_width
         self.icon_height_ = icon_height
@@ -23,10 +23,17 @@ class DGrid:
         min_coordinates = np.amin(y, axis=0)
         bounding_box_width = max_coordinates[0] - min_coordinates[0]
         bounding_box_height = max_coordinates[1] - min_coordinates[1]
-
+        
+        # if there is no delta given, we calculate the smalles possible delta as a natural number
+        if self.delta_ is None:
+            print("...calc delta...")
+            self.delta_ = math.ceil(math.sqrt((len(y)*self.icon_width_*self.icon_height_)/(bounding_box_height*bounding_box_width)))
+        
         # defining the number of rows and columns
         nr_columns = int((self.delta_ * bounding_box_width) / self.icon_width_)
         nr_rows = int((self.delta_ * bounding_box_height) / self.icon_height_)
+        print(self.delta_)
+        print(nr_columns, nr_rows)
 
         if (nr_rows * nr_columns) < len(y):
             raise Exception("There is no space to remove overlaps! Rows: {0}, columns: {1}, data size: {2}. Try "
@@ -55,10 +62,10 @@ class DGrid:
         transformed = []
         for i in range(len(self.grid_)):
             if self.grid_[i]['dummy'] is False:
-                transformed.append([self.grid_[i]['j'] * self.icon_width_,
-                                    self.grid_[i]['i'] * self.icon_height_])
+                transformed.append(np.array([self.grid_[i]['j'] * self.icon_width_,
+                                    self.grid_[i]['i'] * self.icon_height_]))
 
-        return transformed
+        return np.array(transformed)
 
     def fit_transform(self, y):
         return self._fit(y)
