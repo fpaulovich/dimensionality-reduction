@@ -33,12 +33,19 @@ class DGrid:
 
         # if the number of rows and columns are not enough to fit all data instances, increase delta
         if nr_rows * nr_columns < len(y):
+            nr_columns = math.ceil(bounding_box_width / self.icon_width_)
+            nr_rows = math.ceil(bounding_box_height / self.icon_height_)
             self.delta_ = math.sqrt(len(y) / (nr_rows * nr_columns))
             nr_columns = math.ceil(self.delta_ * nr_columns)
             nr_rows = math.ceil(self.delta_ * nr_rows)
 
             print("There is not enough space to remove overlaps! Setting delta to {0}, the smallest possible number "
                   "to fully remove overlaps. Increase it if more empty space is required.".format(self.delta_))
+
+        # print(nr_rows)
+        # print(nr_columns)
+        # print(len(y))
+        # print((nr_rows * nr_columns))
 
         # add the original points
         def to_grid_cell(id_, x_, y_):
@@ -137,8 +144,8 @@ class DGrid:
         count = [[0] * nr_columns for _ in range(nr_rows)]
 
         for i in range(size):
-            col = int((self.grid_[i]['x'] - min_x) / self.icon_width_)
-            row = int((self.grid_[i]['y'] - min_y) / self.icon_height_)
+            col = math.ceil(((self.grid_[i]['x'] - min_x) / max_x) * (nr_columns-1))
+            row = math.ceil(((self.grid_[i]['y'] - min_y) / max_y) * (nr_rows-1))
             count[row][col] = count[row][col] + 1
 
         icons_area = size * self.icon_width_ * self.icon_height_

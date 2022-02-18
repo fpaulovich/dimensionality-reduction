@@ -41,13 +41,13 @@ def plot(y, icon_width, icon_height, label, cmap='Dark2'):
 
 def main():
     # load data
-    raw = datasets.load_iris(as_frame=True)
+    raw = datasets.load_wine(as_frame=True)
     X = raw.data.to_numpy()
     X = preprocessing.StandardScaler().fit_transform(X)
 
     # apply dimensionality reduction
     y = ForceScheme().fit_transform(X)
-    y_overlap_removed = DGrid(icon_width=1, icon_height=1, delta=5).fit_transform(y)
+    y_overlap_removed = DGrid(icon_width=1, icon_height=1, delta=2).fit_transform(y)
 
     # plot
     plot(y_overlap_removed, icon_width=1, icon_height=1, label=raw.target, cmap='Dark2')
