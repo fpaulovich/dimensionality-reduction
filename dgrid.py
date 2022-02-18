@@ -15,6 +15,9 @@ class DGrid:
         self.icon_height_ = icon_height
         self.delta_ = delta
 
+        if self.delta_ is None:
+            self.delta_ = 1
+
         self.grid_ = []
 
     def _fit(self, y):
@@ -23,22 +26,19 @@ class DGrid:
         min_coordinates = np.amin(y, axis=0)
         bounding_box_width = max_coordinates[0] - min_coordinates[0]
         bounding_box_height = max_coordinates[1] - min_coordinates[1]
-        
-        # if there is no delta given, we calculate the smalles possible delta as a natural number
-        if self.delta_ is None:
-            print("...calc delta...")
-            self.delta_ = math.ceil(math.sqrt((len(y)*self.icon_width_*self.icon_height_)/(bounding_box_height*bounding_box_width)))
-        
-        # defining the number of rows and columns
-        nr_columns = int((self.delta_ * bounding_box_width) / self.icon_width_)
-        nr_rows = int((self.delta_ * bounding_box_height) / self.icon_height_)
-        print(self.delta_)
-        print(nr_columns, nr_rows)
 
-        if (nr_rows * nr_columns) < len(y):
-            raise Exception("There is no space to remove overlaps! Rows: {0}, columns: {1}, data size: {2}. Try "
-                            "increasing delta.".
-                            format(nr_rows, nr_columns, len(y)))
+        # defining the number of rows and columns
+        nr_columns = math.ceil(self.delta_ * bounding_box_width / self.icon_width_)
+        nr_rows = math.ceil(self.delta_ * bounding_box_height / self.icon_height_)
+
+        # if the number of rows and columns are not enough to fit all data instances, increase delta
+        if nr_rows * nr_columns < len(y):
+            self.delta_ = math.sqrt(len(y) / (nr_rows * nr_columns))
+            nr_columns = math.ceil(self.delta_ * nr_columns)
+            nr_rows = math.ceil(self.delta_ * nr_rows)
+
+            print("There is not enough space to remove overlaps! Setting delta to {0}, the smallest possible number "
+                  "to fully remove overlaps. Increase it if more empty space is required.".format(self.delta_))
 
         # add the original points
         def to_grid_cell(id_, x_, y_):
@@ -63,7 +63,7 @@ class DGrid:
         for i in range(len(self.grid_)):
             if self.grid_[i]['dummy'] is False:
                 transformed.append(np.array([self.grid_[i]['j'] * self.icon_width_,
-                                    self.grid_[i]['i'] * self.icon_height_]))
+                                             self.grid_[i]['i'] * self.icon_height_]))
 
         return np.array(transformed)
 

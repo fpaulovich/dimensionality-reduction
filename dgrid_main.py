@@ -12,7 +12,7 @@ from sklearn import preprocessing
 from dgrid import DGrid
 
 
-def plot(y, icon_width, icon_height, label, cmap='Set2'):
+def plot(y, icon_width, icon_height, label, cmap='Dark2'):
     max_icon_size = max(icon_width, icon_height)
 
     max_width = np.amax(y, axis=0)[0]
@@ -31,7 +31,7 @@ def plot(y, icon_width, icon_height, label, cmap='Set2'):
         x_ = y[i][0]
         y_ = y[i][1]
         label_ = label[i]
-        icon_size_ = max_icon_size #min(data.iloc[i][width], data.iloc[i][height])
+        icon_size_ = max_icon_size
 
         circle = plt.Circle((x_, y_), (icon_size_ / 2) * 0.75, color=color_map(norm(label_)))
         axes.add_artist(circle)
@@ -47,10 +47,10 @@ def main():
 
     # apply dimensionality reduction
     y = ForceScheme().fit_transform(X)
-    y_transformed = DGrid(icon_width=1, icon_height=1, delta=10).fit_transform(y)
+    y_overlap_removed = DGrid(icon_width=1, icon_height=1, delta=5).fit_transform(y)
 
     # plot
-    plot(y_transformed, icon_width=1, icon_height=1, label=raw.target, cmap='Set2')
+    plot(y_overlap_removed, icon_width=1, icon_height=1, label=raw.target, cmap='Dark2')
     plt.title('DGrid Scatterplot')
     # plt.savefig("transformed.png", dpi=400)
     plt.show()
