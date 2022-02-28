@@ -77,8 +77,8 @@ class DGrid:
 
         # add the dummy points
         start_time = time.time()
-        self.add_dummy_points(min_coordinates[0], min_coordinates[1],
-                              max_coordinates[0], max_coordinates[1],
+        self.add_dummy_points(min_coordinates[0], max_coordinates[0],
+                              min_coordinates[1], max_coordinates[1],
                               nr_columns, nr_rows)
         print("--- Add dummy points executed in %s seconds ---" % (time.time() - start_time))
 
@@ -88,11 +88,12 @@ class DGrid:
         self.grid_.sort(key=lambda v: v.get('id'))
         print("--- Grid assignment executed in %s seconds ---" % (time.time() - start_time))
 
+        # returning the overlap free scatterplot
         transformed = []
         for i in range(len(self.grid_)):
             if self.grid_[i]['dummy'] is False:
-                transformed.append(np.array([self.grid_[i]['j'] * self.icon_width_,
-                                             self.grid_[i]['i'] * self.icon_height_]))
+                transformed.append(np.array([min_coordinates[0] + self.grid_[i]['j'] * self.icon_width_,
+                                             min_coordinates[1] + self.grid_[i]['i'] * self.icon_height_]))
 
         return np.array(transformed)
 
@@ -138,20 +139,19 @@ class DGrid:
 
         return grid
 
-    def add_dummy_points(self, min_x, min_y, max_x, max_y, nr_columns, nr_rows):
+    def add_dummy_points(self, x_min, x_max, y_min, y_max, nr_columns, nr_rows):
         size = len(self.grid_)
 
-        # counting grid with number of points
+        # counting the number of points per grid cell
         count_map = np.zeros((nr_rows, nr_columns), dtype=np.uint32)
 
         for i in range(size):
-            # counting the number of points per grid cell
-            col = math.ceil(((self.grid_[i]['x'] - min_x) / max_x) * (nr_columns - 1))
-            row = math.ceil(((self.grid_[i]['y'] - min_y) / max_y) * (nr_rows - 1))
+            col = math.ceil(((self.grid_[i]['x'] - x_min) / (x_max - x_min)) * (nr_columns - 1))
+            row = math.ceil(((self.grid_[i]['y'] - y_min) / (y_max - y_min)) * (nr_rows - 1))
             count_map[row][col] = count_map[row][col] + 1
 
         # calculating the gaussian mask
-        mask_size = int(max(3, ((max_x - min_x) * (max_y - min_y)) / (size * self.icon_width_ * self.icon_height_)))
+        mask_size = int(max(3, ((x_max - x_min) * (y_max - y_min)) / (size * self.icon_width_ * self.icon_height_)))
         mask_size = mask_size + 1 if mask_size % 2 == 0 else mask_size
         mask = DGrid.gaussian_mask(mask_size, (mask_size - 1) / 6.0)
 
@@ -161,11 +161,11 @@ class DGrid:
         # creating all dummy candidates
         dummy_points_candidates = []
         for row in range(nr_rows):
-            y_ = row * (max_y - min_y) / (nr_rows - 1) + min_y
+            y_ = row * (y_max - y_min) / (nr_rows - 1) + y_min
 
             for column in range(nr_columns):
                 if count_map[row][column] == 0:
-                    x_ = column * (max_x - min_x) / (nr_columns - 1) + min_x
+                    x_ = column * (x_max - x_min) / (nr_columns - 1) + x_min
                     dummy_points_candidates.append([x_, y_, density_map[row][column], -1])
 
         # sorting candidates using density
@@ -179,7 +179,7 @@ class DGrid:
                 dummy_points_candidates[nr_dummy_points - 1][2] -
                 dummy_points_candidates[nr_dummy_points][2]) < 0.0001:
 
-            # if not, create a kd-tree to find the nearest neighbors
+            # if not, create a kd-tree to find the nearest point in the original layout
             original_points = []
             for i in range(size):
                 # adding the original points
@@ -193,8 +193,8 @@ class DGrid:
             for i in range(len(dummy_points_candidates)):
                 if math.fabs(dummy_points_candidates[nr_dummy_points - 1][2] -
                              dummy_points_candidates[i][2]) < 0.0001:
-                    dummy_points_candidates[i][3] = tree.query([[dummy_points_candidates[i][0],
-                                                                 dummy_points_candidates[i][1]]], 1)[1]
+                    dummy_points_candidates[i][3] = float(tree.query([[dummy_points_candidates[i][0],
+                                                                       dummy_points_candidates[i][1]]], 1)[1])
 
             # sort the candidates again using density and distance
             dummy_points_candidates.sort(key=lambda x: (x[2], x[3]))
