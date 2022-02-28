@@ -1,7 +1,9 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
 import sklearn.datasets as datasets
+import time
 
 from matplotlib.colors import ListedColormap
 from matplotlib import cm
@@ -14,9 +16,8 @@ from dgrid import DGrid
 
 def plot(y, icon_width, icon_height, label, cmap='Dark2'):
     max_icon_size = max(icon_width, icon_height)
-
-    max_width = np.amax(y, axis=0)[0]
-    max_height = np.amax(y, axis=0)[1]
+    max_coordinates = np.amax(y, axis=0)
+    min_coordinates = np.amin(y, axis=0)
 
     min_label = label.min()
     max_label = label.max()
@@ -25,7 +26,10 @@ def plot(y, icon_width, icon_height, label, cmap='Dark2'):
     color_map = matplotlib.cm.get_cmap(cmap)
 
     figure, axes = plt.subplots()
-    plt.axis([-max_icon_size, max_width + max_icon_size, -max_icon_size, max_height + max_icon_size])
+    plt.axis([min_coordinates[0] - max_icon_size,
+              max_coordinates[0] + max_icon_size,
+              min_coordinates[1] - max_icon_size,
+              max_coordinates[1] + max_icon_size])
 
     for i in range(len(y)):
         x_ = y[i][0]
@@ -39,15 +43,19 @@ def plot(y, icon_width, icon_height, label, cmap='Dark2'):
     axes.set_aspect(1)
 
 
-def main():
+def main1():
     # load data
-    raw = datasets.load_wine(as_frame=True)
+    raw = datasets.load_iris(as_frame=True)
     X = raw.data.to_numpy()
     X = preprocessing.StandardScaler().fit_transform(X)
 
     # apply dimensionality reduction
     y = ForceScheme().fit_transform(X)
-    y_overlap_removed = DGrid(icon_width=1, icon_height=1, delta=2).fit_transform(y)
+
+    # remove overlaps
+    start_time = time.time()
+    y_overlap_removed = DGrid(icon_width=1, icon_height=1, delta=1).fit_transform(y)
+    print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
 
     # plot
     plot(y_overlap_removed, icon_width=1, icon_height=1, label=raw.target, cmap='Dark2')
@@ -58,6 +66,30 @@ def main():
     return
 
 
+def main2():
+    # load data
+    input_file = "scatterplot[0001].csv"
+
+    df = pd.read_csv(input_file, header=0, delimiter=",")
+    labels = df['label'].values  # getting labels
+    width_max = df['width'].max()  # getting the max icon width
+    height_max = df['height'].max()  # getting the max icon height
+    y = df[['ux', 'uy']].values  # getting x and y coordinates
+
+    # remove overlaps
+    start_time = time.time()
+    y_overlap_removed = DGrid(icon_width=width_max, icon_height=height_max, delta=1).fit_transform(y)
+    print("--- DGrid executed in %s seconds ---" % (time.time() - start_time))
+
+    # plot
+    plot(y_overlap_removed, icon_width=width_max, icon_height=height_max, label=labels, cmap='Dark2')
+    plt.title('DGrid Scatterplot')
+    # plt.savefig("transformed.png", dpi=400)
+    plt.show()
+
+    return
+
+
 if __name__ == "__main__":
-    main()
+    main2()
     exit(0)

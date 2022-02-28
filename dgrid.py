@@ -54,8 +54,8 @@ class DGrid:
 
         # if the number of rows and columns are not enough to fit all data instances, increase delta
         if nr_rows * nr_columns < len(y):
-            nr_columns = math.ceil(bounding_box_width / self.icon_width_)
-            nr_rows = math.ceil(bounding_box_height / self.icon_height_)
+            nr_columns = (bounding_box_width / self.icon_width_)
+            nr_rows = (bounding_box_height / self.icon_height_)
             self.delta_ = math.sqrt(len(y) / (nr_rows * nr_columns))
             nr_columns = math.ceil(self.delta_ * nr_columns)
             nr_rows = math.ceil(self.delta_ * nr_rows)
