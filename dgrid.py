@@ -49,8 +49,8 @@ class DGrid:
         bounding_box_height = max_coordinates[1] - min_coordinates[1]
 
         # defining the number of rows and columns
-        nr_columns = int((self.delta_ * bounding_box_width) / self.icon_width_)
-        nr_rows = int((self.delta_ * bounding_box_height) / self.icon_height_)
+        nr_columns = math.ceil((self.delta_ * bounding_box_width) / self.icon_width_)
+        nr_rows = math.ceil((self.delta_ * bounding_box_height) / self.icon_height_)
 
         # if the number of rows and columns are not enough to fit all data instances, increase delta
         if nr_rows * nr_columns < len(y):
