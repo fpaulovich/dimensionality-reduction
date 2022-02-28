@@ -54,7 +54,7 @@ def main1():
 
     # remove overlaps
     start_time = time.time()
-    y_overlap_removed = DGrid(icon_width=1, icon_height=1, delta=1).fit_transform(y)
+    y_overlap_removed = DGrid(icon_width=1, icon_height=1, delta=5).fit_transform(y)
     print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
 
     # plot
@@ -91,5 +91,5 @@ def main2():
 
 
 if __name__ == "__main__":
-    main2()
+    main1()
     exit(0)
