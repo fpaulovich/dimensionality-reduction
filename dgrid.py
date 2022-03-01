@@ -7,12 +7,16 @@ from sklearn.neighbors import KDTree
 
 
 @numba.jit(nopython=True, parallel=False)
-def density_map_calculation(count, mask, mask_size, nr_rows, nr_columns):
-    density_map = np.zeros((nr_rows, nr_columns), dtype=np.float32)
+def _density_calculation(count_map, mask, mask_size, x_min, x_max, y_min, y_max, nr_columns, nr_rows):
+    dummy_points_candidates = []
 
     for row in range(nr_rows):
+        y_ = row * (y_max - y_min) / (nr_rows - 1) + y_min
+
         for column in range(nr_columns):
-            if count[row][column] == 0:
+            if count_map[row][column] == 0:
+                x_ = column * (x_max - x_min) / (nr_columns - 1) + x_min
+                density = 0
 
                 for i in range(mask_size):
                     for j in range(mask_size):
@@ -20,9 +24,11 @@ def density_map_calculation(count, mask, mask_size, nr_rows, nr_columns):
                         c = column - (int(mask_size / 2)) + i
 
                         if (0 <= r < nr_rows) and (0 <= c < nr_columns):
-                            density_map[row][column] += mask[i][j] * count[r][c]
+                            density += mask[i][j] * count_map[r][c]
 
-    return density_map
+                dummy_points_candidates.append([x_, y_, density, -1])
+
+    return dummy_points_candidates
 
 
 class DGrid:
@@ -77,14 +83,14 @@ class DGrid:
 
         # add the dummy points
         start_time = time.time()
-        self.add_dummy_points(min_coordinates[0], max_coordinates[0],
-                              min_coordinates[1], max_coordinates[1],
-                              nr_columns, nr_rows)
+        self._add_dummy_points(min_coordinates[0], max_coordinates[0],
+                               min_coordinates[1], max_coordinates[1],
+                               nr_columns, nr_rows)
         print("--- Add dummy points executed in %s seconds ---" % (time.time() - start_time))
 
         # execute
         start_time = time.time()
-        self.grid_ = DGrid.grid_rec(self.grid_, nr_rows, nr_columns, 0, 0)
+        self.grid_ = DGrid._grid_rec(self.grid_, nr_rows, nr_columns, 0, 0)
         self.grid_.sort(key=lambda v: v.get('id'))
         print("--- Grid assignment executed in %s seconds ---" % (time.time() - start_time))
 
@@ -104,7 +110,7 @@ class DGrid:
         return self._fit(y)
 
     @staticmethod
-    def split_grid(grid, cut_point, direction):
+    def _split_grid(grid, cut_point, direction):
         if direction == 'x':
             grid.sort(key=lambda cel: (cel['x'], cel['y']))
         else:
@@ -118,7 +124,7 @@ class DGrid:
         return grid0, grid1
 
     @staticmethod
-    def grid_rec(grid, r, s, i, j):
+    def _grid_rec(grid, r, s, i, j):
         size = len(grid)
 
         if size > 0:
@@ -128,18 +134,18 @@ class DGrid:
             else:
                 if r > s:
                     half_rows = int(math.ceil(r / 2.0))
-                    grid0, grid1 = DGrid.split_grid(grid, min(size, half_rows * s), 'y')
-                    DGrid.grid_rec(grid0, half_rows, s, i, j)
-                    DGrid.grid_rec(grid1, (r - half_rows), s, (i + half_rows), j)
+                    grid0, grid1 = DGrid._split_grid(grid, min(size, half_rows * s), 'y')
+                    DGrid._grid_rec(grid0, half_rows, s, i, j)
+                    DGrid._grid_rec(grid1, (r - half_rows), s, (i + half_rows), j)
                 else:
                     half_columns = int(math.ceil(s / 2.0))
-                    grid0, grid1 = DGrid.split_grid(grid, min(size, half_columns * r), 'x')
-                    DGrid.grid_rec(grid0, r, half_columns, i, j)
-                    DGrid.grid_rec(grid1, r, (s - half_columns), i, (j + half_columns))
+                    grid0, grid1 = DGrid._split_grid(grid, min(size, half_columns * r), 'x')
+                    DGrid._grid_rec(grid0, r, half_columns, i, j)
+                    DGrid._grid_rec(grid1, r, (s - half_columns), i, (j + half_columns))
 
         return grid
 
-    def add_dummy_points(self, x_min, x_max, y_min, y_max, nr_columns, nr_rows):
+    def _add_dummy_points(self, x_min, x_max, y_min, y_max, nr_columns, nr_rows):
         size = len(self.grid_)
 
         # counting the number of points per grid cell
@@ -153,20 +159,12 @@ class DGrid:
         # calculating the gaussian mask
         mask_size = int(max(3, ((x_max - x_min) * (y_max - y_min)) / (size * self.icon_width_ * self.icon_height_)))
         mask_size = mask_size + 1 if mask_size % 2 == 0 else mask_size
-        mask = DGrid.gaussian_mask(mask_size, (mask_size - 1) / 6.0)
-
-        # applying the gaussian mask on the counting grid
-        density_map = density_map_calculation(count_map, mask, mask_size, nr_rows, nr_columns)
+        mask = DGrid._gaussian_mask(mask_size, (mask_size - 1) / 6.0)
 
         # creating all dummy candidates
-        dummy_points_candidates = []
-        for row in range(nr_rows):
-            y_ = row * (y_max - y_min) / (nr_rows - 1) + y_min
-
-            for column in range(nr_columns):
-                if count_map[row][column] == 0:
-                    x_ = column * (x_max - x_min) / (nr_columns - 1) + x_min
-                    dummy_points_candidates.append([x_, y_, density_map[row][column], -1])
+        dummy_points_candidates = _density_calculation(count_map, mask, mask_size,
+                                                       x_min, x_max, y_min, y_max,
+                                                       nr_columns, nr_rows)
 
         # sorting candidates using density
         dummy_points_candidates.sort(key=lambda x: x[2])
@@ -210,7 +208,7 @@ class DGrid:
         return
 
     @staticmethod
-    def gaussian_mask(size, sigma):
+    def _gaussian_mask(size, sigma):
         mask = np.zeros((size, size), dtype=np.float32)
 
         for i in range(size):
