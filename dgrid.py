@@ -36,7 +36,8 @@ class DGrid:
     def __init__(self,
                  icon_width=1,
                  icon_height=1,
-                 delta=None
+                 delta=None,
+                 callbacks=[]
                  ):
         self.icon_width_ = icon_width
         self.icon_height_ = icon_height
@@ -46,8 +47,14 @@ class DGrid:
             self.delta_ = 1
 
         self.grid_ = []
+        self.callbacks = callbacks
 
+    def _trigger_callbacks(self, msg):
+        if self.callbacks is not None:
+            for callback in self.callbacks:
+                callback(msg)
     def _fit(self, y):
+        self._trigger_callbacks("start fit")
         # calculating the bounding box
         max_coordinates = np.amax(y, axis=0)
         min_coordinates = np.amin(y, axis=0)
@@ -78,6 +85,7 @@ class DGrid:
                     'j': 0,
                     'dummy': False}
 
+        self._trigger_callbacks("refactor data")
         for i in range(len(y)):
             self.grid_.append(to_grid_cell(i, y[i][0], y[i][1]))
 
@@ -89,11 +97,13 @@ class DGrid:
         print("--- Add dummy points executed in %s seconds ---" % (time.time() - start_time))
 
         # execute
+        self._trigger_callbacks("grid_rect")
         start_time = time.time()
         self.grid_ = DGrid._grid_rec(self.grid_, nr_rows, nr_columns, 0, 0)
         self.grid_.sort(key=lambda v: v.get('id'))
         print("--- Grid assignment executed in %s seconds ---" % (time.time() - start_time))
 
+        self._trigger_callbacks("end grid_rect")
         # returning the overlap free scatterplot
         transformed = []
         for i in range(len(self.grid_)):
@@ -101,6 +111,7 @@ class DGrid:
                 transformed.append(np.array([min_coordinates[0] + self.grid_[i]['j'] * self.icon_width_,
                                              min_coordinates[1] + self.grid_[i]['i'] * self.icon_height_]))
 
+        self._trigger_callbacks("finish")
         return np.array(transformed)
 
     def fit_transform(self, y):
@@ -146,6 +157,7 @@ class DGrid:
         return grid
 
     def _add_dummy_points(self, x_min, x_max, y_min, y_max, nr_columns, nr_rows):
+        self._trigger_callbacks("add dummy points")
         size = len(self.grid_)
 
         # counting the number of points per grid cell
@@ -161,11 +173,13 @@ class DGrid:
         mask_size = mask_size + 1 if mask_size % 2 == 0 else mask_size
         mask = DGrid._gaussian_mask(mask_size, (mask_size - 1) / 6.0)
 
+        self._trigger_callbacks("big ass nested for-loops")
         # creating all dummy candidates
         dummy_points_candidates = _density_calculation(count_map, mask, mask_size,
                                                        x_min, x_max, y_min, y_max,
                                                        nr_columns, nr_rows)
 
+        self._trigger_callbacks("end of nested for-loops")
         # sorting candidates using density
         dummy_points_candidates.sort(key=lambda x: x[2])
 
@@ -205,6 +219,7 @@ class DGrid:
                                'j': 0,
                                'dummy': True})
 
+        self._trigger_callbacks("end of dummy points")
         return
 
     @staticmethod
