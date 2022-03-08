@@ -1,5 +1,6 @@
 import math
 import numpy as np
+
 import time
 import numba
 
@@ -31,13 +32,12 @@ def _density_calculation(count_map, mask, mask_size, x_min, x_max, y_min, y_max,
     return dummy_points_candidates
 
 
-class DGrid:
+class DGridFast:
 
     def __init__(self,
                  icon_width=1,
                  icon_height=1,
-                 delta=None,
-                 callbacks=[]
+                 delta=None
                  ):
         self.icon_width_ = icon_width
         self.icon_height_ = icon_height
@@ -47,14 +47,8 @@ class DGrid:
             self.delta_ = 1
 
         self.grid_ = []
-        self.callbacks = callbacks
 
-    def _trigger_callbacks(self, msg):
-        if self.callbacks is not None:
-            for callback in self.callbacks:
-                callback(msg)
     def _fit(self, y):
-        self._trigger_callbacks("start fit")
         # calculating the bounding box
         max_coordinates = np.amax(y, axis=0)
         min_coordinates = np.amin(y, axis=0)
@@ -85,7 +79,6 @@ class DGrid:
                     'j': 0,
                     'dummy': False}
 
-        self._trigger_callbacks("refactor data")
         for i in range(len(y)):
             self.grid_.append(to_grid_cell(i, y[i][0], y[i][1]))
 
@@ -96,14 +89,16 @@ class DGrid:
                                nr_columns, nr_rows)
         print("--- Add dummy points executed in %s seconds ---" % (time.time() - start_time))
 
-        # execute
-        self._trigger_callbacks("grid_rect")
+        # remove overlaps
         start_time = time.time()
-        self.grid_ = DGrid._grid_rec(self.grid_, nr_rows, nr_columns, 0, 0)
+
+        # creating the initial indices
+        index_x, index_y = self._init_indices()
+
+        self.grid_ = self._grid_rec(index_x, index_y, nr_rows, nr_columns, 0, 0)
         self.grid_.sort(key=lambda v: v.get('id'))
         print("--- Grid assignment executed in %s seconds ---" % (time.time() - start_time))
 
-        self._trigger_callbacks("end grid_rect")
         # returning the overlap free scatterplot
         transformed = []
         for i in range(len(self.grid_)):
@@ -111,7 +106,6 @@ class DGrid:
                 transformed.append(np.array([min_coordinates[0] + self.grid_[i]['j'] * self.icon_width_,
                                              min_coordinates[1] + self.grid_[i]['i'] * self.icon_height_]))
 
-        self._trigger_callbacks("finish")
         return np.array(transformed)
 
     def fit_transform(self, y):
@@ -120,44 +114,130 @@ class DGrid:
     def fit(self, y):
         return self._fit(y)
 
+    def _init_indices(self):
+        # creating the index ordered by X
+        self.grid_.sort(key=lambda cel: (cel['x'], cel['y']))
+        index_x = []
+        for cell_grid in self.grid_:
+            index_x.append([cell_grid['id'], cell_grid['x'], cell_grid['y']])
+
+        # creating the index ordered by Y
+        self.grid_.sort(key=lambda cel: (cel['y'], cel['x']))
+        index_y = []
+        for cell_grid in self.grid_:
+            index_y.append([cell_grid['id'], cell_grid['x'], cell_grid['y']])
+
+        # returning to the original ordering
+        self.grid_.sort(key=lambda cel: cel['id'])
+
+        return index_x, index_y
+
     @staticmethod
-    def _split_grid(grid, cut_point, direction):
-        if direction == 'x':
-            grid.sort(key=lambda cel: (cel['x'], cel['y']))
+    def _split_grid(index_x, index_y, cut_point, direction):
+        # VERY IMPORTANT
+        # second list can be empty, so this needs to be handled in some way
+        # VERY IMPORTANT
+        if cut_point >= len(index_x):
+            return index_x, [], index_y, []
+        # VERY IMPORTANT
+        # second list can be empty, so this needs to be handled in some way
+        # VERY IMPORTANT
+
+        index_x0 = []
+        index_x1 = []
+
+        index_y0 = []
+        index_y1 = []
+
+        if direction is 'x':
+            # splitting the index_x keeping order
+            index_x0 = index_x[:cut_point]
+            index_x1 = index_x[-(len(index_x) - cut_point):]
+
+            # splitting index_y keeping order
+            # getting the coordinates of the element on the cut point
+            x_cutpoint = index_x[cut_point - 1][1]
+            y_cutpoint = index_x[cut_point - 1][2]
+
+            for index in index_y:
+                x_index_y = index[1]
+                y_index_y = index[2]
+
+                if x_index_y < x_cutpoint:
+                    index_y0.append(index)
+                elif x_index_y > x_cutpoint:
+                    index_y1.append(index)
+                elif x_index_y == x_cutpoint:
+                    if y_index_y < y_cutpoint:
+                        index_y0.append(index)
+                    elif y_index_y > y_cutpoint:
+                        index_y1.append(index)
+                    else:
+                        if len(index_y0) < cut_point:
+                            index_y0.append(index)
+                        else:
+                            index_y1.append(index)
         else:
-            grid.sort(key=lambda cel: (cel['y'], cel['x']))
+            # splitting the index_y keeping order
+            index_y0 = index_y[:cut_point]
+            index_y1 = index_y[-(len(index_y) - cut_point):]
 
-        grid0 = grid[:cut_point]
-        grid1 = []
-        if cut_point < len(grid):
-            grid1 = grid[-(len(grid) - cut_point):]
+            # splitting index_y keeping order
+            # getting the coordinates of the element on the cut point
+            x_cutpoint = index_y[cut_point - 1][1]
+            y_cutpoint = index_y[cut_point - 1][2]
 
-        return grid0, grid1
+            for index in index_x:
+                x_index_x = index[1]
+                y_index_x = index[2]
 
-    @staticmethod
-    def _grid_rec(grid, r, s, i, j):
-        size = len(grid)
+                if y_index_x < y_cutpoint:
+                    index_x0.append(index)
+                elif y_index_x > y_cutpoint:
+                    index_x1.append(index)
+                elif y_index_x == y_cutpoint:
+                    if x_index_x < x_cutpoint:
+                        index_x0.append(index)
+                    elif x_index_x > x_cutpoint:
+                        index_x1.append(index)
+                    else:
+                        if len(index_x0) < cut_point:
+                            index_x0.append(index)
+                        else:
+                            index_x1.append(index)
 
-        if size > 0:
-            if size == 1:
-                grid[0]['i'] = i
-                grid[0]['j'] = j
+        return index_x0, index_x1, index_y0, index_y1
+
+    def _grid_rec(self, index_x, index_y, r, s, i, j):
+        nr_elements = len(index_x)
+
+        if nr_elements > 0:
+            if nr_elements == 1:
+                self.grid_[index_x[0][0]]['i'] = i
+                self.grid_[index_x[0][0]]['j'] = j
             else:
                 if r > s:
                     half_rows = int(math.ceil(r / 2.0))
-                    grid0, grid1 = DGrid._split_grid(grid, min(size, half_rows * s), 'y')
-                    DGrid._grid_rec(grid0, half_rows, s, i, j)
-                    DGrid._grid_rec(grid1, (r - half_rows), s, (i + half_rows), j)
-                else:
-                    half_columns = int(math.ceil(s / 2.0))
-                    grid0, grid1 = DGrid._split_grid(grid, min(size, half_columns * r), 'x')
-                    DGrid._grid_rec(grid0, r, half_columns, i, j)
-                    DGrid._grid_rec(grid1, r, (s - half_columns), i, (j + half_columns))
 
-        return grid
+                    index_x0, index_x1, index_y0, index_y1 = self._split_grid(index_x,
+                                                                              index_y,
+                                                                              min(nr_elements, half_rows * s),
+                                                                              'y')
+                    self._grid_rec(index_x0, index_y0, half_rows, s, i, j)
+                    self._grid_rec(index_x1, index_y1, (r - half_rows), s, (i + half_rows), j)
+                else:
+                    half_columns = (math.ceil(s / 2.0))
+
+                    index_x0, index_x1, index_y0, index_y1 = self._split_grid(index_x,
+                                                                              index_y,
+                                                                              min(nr_elements, half_columns * r),
+                                                                              'x')
+                    self._grid_rec(index_x0, index_y0, r, half_columns, i, j)
+                    self._grid_rec(index_x1, index_y1, r, (s - half_columns), i, (j + half_columns))
+
+        return self.grid_
 
     def _add_dummy_points(self, x_min, x_max, y_min, y_max, nr_columns, nr_rows):
-        self._trigger_callbacks("add dummy points")
         size = len(self.grid_)
 
         # counting the number of points per grid cell
@@ -171,15 +251,13 @@ class DGrid:
         # calculating the gaussian mask
         mask_size = int(max(3, ((x_max - x_min) * (y_max - y_min)) / (size * self.icon_width_ * self.icon_height_)))
         mask_size = mask_size + 1 if mask_size % 2 == 0 else mask_size
-        mask = DGrid._gaussian_mask(mask_size, (mask_size - 1) / 6.0)
+        mask = DGridFast._gaussian_mask(mask_size, (mask_size - 1) / 6.0)
 
-        self._trigger_callbacks("big ass nested for-loops")
         # creating all dummy candidates
         dummy_points_candidates = _density_calculation(count_map, mask, mask_size,
                                                        x_min, x_max, y_min, y_max,
                                                        nr_columns, nr_rows)
 
-        self._trigger_callbacks("end of nested for-loops")
         # sorting candidates using density
         dummy_points_candidates.sort(key=lambda x: x[2])
 
@@ -219,7 +297,6 @@ class DGrid:
                                'j': 0,
                                'dummy': True})
 
-        self._trigger_callbacks("end of dummy points")
         return
 
     @staticmethod
