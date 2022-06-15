@@ -53,6 +53,7 @@ class DGrid:
         if self.callbacks is not None:
             for callback in self.callbacks:
                 callback(msg)
+
     def _fit(self, y):
         self._trigger_callbacks("start fit")
         # calculating the bounding box
@@ -62,16 +63,16 @@ class DGrid:
         bounding_box_height = max_coordinates[1] - min_coordinates[1]
 
         # defining the number of rows and columns
-        nr_columns = math.ceil((self.delta_ * bounding_box_width) / self.icon_width_)
-        nr_rows = math.ceil((self.delta_ * bounding_box_height) / self.icon_height_)
+        nr_columns = math.ceil((math.sqrt(self.delta_) * bounding_box_width) / self.icon_width_)
+        nr_rows = math.ceil((math.sqrt(self.delta_) * bounding_box_height) / self.icon_height_)
 
         # if the number of rows and columns are not enough to fit all data instances, increase delta
         if nr_rows * nr_columns < len(y):
             nr_columns = (bounding_box_width / self.icon_width_)
             nr_rows = (bounding_box_height / self.icon_height_)
-            self.delta_ = math.sqrt(len(y) / (nr_rows * nr_columns))
-            nr_columns = math.ceil(self.delta_ * nr_columns)
-            nr_rows = math.ceil(self.delta_ * nr_rows)
+            self.delta_ = len(y) / (nr_rows * nr_columns)
+            nr_columns = math.ceil(math.sqrt(self.delta_) * nr_columns)
+            nr_rows = math.ceil(math.sqrt(self.delta_) * nr_rows)
 
             print("There is not enough space to remove overlaps! Setting delta to {0}, the smallest possible number "
                   "to fully remove overlaps. Increase it if more empty space is required.".format(self.delta_))

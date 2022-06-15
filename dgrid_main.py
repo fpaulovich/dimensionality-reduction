@@ -9,6 +9,8 @@ from matplotlib.colors import ListedColormap
 from matplotlib import cm
 
 from force_scheme import ForceScheme
+from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 
 from sklearn import preprocessing
 from dgrid import DGrid
@@ -37,8 +39,13 @@ def plot(y, icon_width, icon_height, label, cmap='Dark2'):
         label_ = label[i]
         icon_size_ = max_icon_size
 
-        circle = plt.Circle((x_, y_), (icon_size_ / 2) * 0.75, color=color_map(norm(label_)))
+        circle = plt.Circle((x_, y_), (icon_size_ / 2), linewidth=0.5,
+                            edgecolor='white', facecolor=color_map(norm(label_)))
         axes.add_artist(circle)
+
+        # rect = plt.Rectangle((x_, y_), icon_size_, icon_size_, linewidth=0.5,
+        #                      edgecolor='white', facecolor=color_map(norm(label_)))
+        # axes.add_artist(rect)
 
     axes.set_aspect(1)
 
@@ -50,11 +57,13 @@ def main1():
     X = preprocessing.StandardScaler().fit_transform(X)
 
     # apply dimensionality reduction
+    # y = TSNE(n_components=2).fit_transform(X)
     y = ForceScheme().fit_transform(X)
+    # y = PCA(n_components=2).fit_transform(X)
 
     # remove overlaps
     start_time = time.time()
-    y_overlap_removed = DGrid(icon_width=1, icon_height=1, delta=5).fit_transform(y)
+    y_overlap_removed = DGrid(icon_width=1, icon_height=1, delta=25).fit_transform(y)
     print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
 
     # plot
@@ -91,5 +100,5 @@ def main2():
 
 
 if __name__ == "__main__":
-    main1()
+    main2()
     exit(0)
