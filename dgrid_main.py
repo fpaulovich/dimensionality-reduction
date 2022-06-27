@@ -23,7 +23,7 @@ import matplotlib.patches as mpatches
 from umap import UMAP
 
 
-def draw_starglyph(x, y, size, data, axes, facecolor):
+def draw_starglyph(x, y, size, data, axes, facecolor, alpha):
     nr_points = len(data)
     increments = 360.0 / nr_points
 
@@ -43,7 +43,7 @@ def draw_starglyph(x, y, size, data, axes, facecolor):
 
     codes, verts = zip(*path_data)
     path = mpath.Path(verts, codes)
-    patch = mpatches.PathPatch(path, facecolor=facecolor, linewidth=0.5, edgecolor='black', alpha=0.5)
+    patch = mpatches.PathPatch(path, facecolor=facecolor, linewidth=0.5, edgecolor='black', alpha=alpha)
 
     axes.add_patch(patch)
 
@@ -64,7 +64,8 @@ def draw_starglyph(x, y, size, data, axes, facecolor):
     axes.add_patch(patch)
 
 
-def plot_starglyphs(y, X, icon_width, icon_height, label, names=None, cmap='Dark2', figsize=(5, 5), fontsize=6):
+def plot_starglyphs(y, X, icon_width, icon_height, label, names=None,
+                    cmap='Dark2', figsize=(5, 5), fontsize=6, alpha=1.0):
     max_icon_size = max(icon_width, icon_height)
     max_coordinates = np.amax(y, axis=0)
     min_coordinates = np.amin(y, axis=0)
@@ -93,9 +94,9 @@ def plot_starglyphs(y, X, icon_width, icon_height, label, names=None, cmap='Dark
         y_ = y[i][1]
         label_ = label[i]
         icon_size_ = max_icon_size
-        draw_starglyph(x_, y_, icon_size_, X[i], axes, facecolor=color_map(norm(label_)))
+        draw_starglyph(x_, y_, icon_size_, X[i], axes, alpha=alpha, facecolor=color_map(norm(label_)))
         if names is not None:
-            plt.text(x_, (y_+icon_size_/2), names[i][:9], horizontalalignment='center', fontsize=fontsize)
+            plt.text(x_, (y_+icon_size_/2), names[i], horizontalalignment='center', fontsize=fontsize)
 
     axes.set_aspect(1)
 
@@ -108,17 +109,6 @@ def plot_circles(y, icon_width, icon_height, label, cmap='Dark2', alpha=1.0):
     min_label = label.min()
     max_label = label.max()
 
-    # sort points according to label
-    def to_point(x_, y_, label_):
-        return {'x': x_,
-                'y': y_,
-                'label': label_}
-
-    points = []
-    for i in range(len(y)):
-        points.append(to_point(y[i][0], y[i][1], label[i]))
-    points.sort(key=lambda v: v.get('label'))
-
     norm = matplotlib.colors.Normalize(vmin=min_label, vmax=max_label)
     color_map = matplotlib.cm.get_cmap(cmap)
 
@@ -128,10 +118,10 @@ def plot_circles(y, icon_width, icon_height, label, cmap='Dark2', alpha=1.0):
               min_coordinates[1] - max_icon_size,
               max_coordinates[1] + max_icon_size])
 
-    for i in range(len(points)):
-        x_ = points[i]["x"]
-        y_ = points[i]["y"]
-        label_ = points[i]["label"]
+    for i in range(len(y)):
+        x_ = y[i][0]
+        y_ = y[i][1]
+        label_ = label[i]
         icon_size_ = max_icon_size
 
         circle = plt.Circle((x_, y_), (icon_size_ / 2), linewidth=0.5,
@@ -270,13 +260,17 @@ def main4():
     plt.show()
 
 
-def main5():
+def main_fig_happiness():
     # read multidimensional data
     data_file = "/Users/fpaulovich/Dropbox/datasets/csv/happines2019.csv"
     df = pd.read_csv(data_file, header=0, sep='[;,]', engine='python')
 
     names = df[df.columns[1]]  # get country names
     labels = df[df.columns[2]]  # get scores
+
+    # trunk names size
+    for i in range(len(names)):
+        names[i] = names[i][:9]
 
     df = df.drop(['Score', 'Overall rank', 'Country or region'], axis=1)  # removing the column class
     X = df.values
@@ -297,15 +291,15 @@ def main5():
     print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
 
     # plot
-    plot_starglyphs(y, X, icon_width=icon_size,
+    plot_starglyphs(y_overlap_removed, X, icon_width=icon_size,
                     icon_height=icon_size, label=labels, names=names,
-                    figsize=(25, 11), fontsize=6, cmap="cividis")
+                    figsize=(25, 11), fontsize=6, alpha=0.75, cmap="cividis")
     plt.title('DGrid Scatterplot')
-    plt.savefig("/Users/fpaulovich/Desktop/hapiness_overlap2.png", dpi=400)
+    plt.savefig("/Users/fpaulovich/Desktop/hapiness_dgrid.png", dpi=400)
     plt.show()
 
 
-def main_fig1():
+def main_fig_cancer():
     # load data
     raw = datasets.load_breast_cancer(as_frame=True)
     X = preprocessing.StandardScaler().fit_transform(raw.data.to_numpy())
@@ -314,7 +308,23 @@ def main_fig1():
     y = TSNE(n_components=2, random_state=0).fit_transform(X)
 
     icon_size = 1.75
-    delta = 1.0
+    delta = 1.5
+
+    # sort points according to target
+    def to_point(x_, y_, label_):
+        return {'x': x_,
+                'y': y_,
+                'label': label_}
+
+    points = []
+    for i in range(len(y)):
+        points.append(to_point(y[i][0], y[i][1], raw.target[i]))
+    points.sort(key=lambda v: v.get('label'))
+
+    for i in range(len(y)):
+        y[i][0] = points[i]['x']
+        y[i][1] = points[i]['y']
+        raw.target[i] = points[i]['label']
 
     # remove overlaps
     start_time = time.time()
@@ -323,15 +333,15 @@ def main_fig1():
 
     # plot
     cmap = ListedColormap(['#6a3d9a', '#ff7f00'])
-    plot_circles(y_overlap_removed, icon_width=icon_size, icon_height=icon_size, label=raw.target,
-                 alpha=0.85, cmap=cmap)
+    plot_circles(y, icon_width=icon_size, icon_height=icon_size, label=raw.target,
+                 alpha=0.95, cmap=cmap)
     plt.title('DGrid Scatterplot')
     plt.savefig("/Users/fpaulovich/Desktop/breast_cancer-" + str(delta) + ".png", dpi=400)
-    # plt.show()
+    plt.show()
 
     return
 
 
 if __name__ == "__main__":
-    main_fig1()
+    main_fig_cancer()
     exit(0)
