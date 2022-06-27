@@ -101,7 +101,7 @@ def plot_starglyphs(y, X, icon_width, icon_height, label, names=None,
     axes.set_aspect(1)
 
 
-def plot_circles(y, icon_width, icon_height, label, cmap='Dark2', alpha=1.0, figsize=(5, 5)):
+def plot_circles(y, icon_width, icon_height, label, cmap='Dark2', alpha=1.0, figsize=(5, 5), edgecolor='white'):
     max_icon_size = max(icon_width, icon_height)
     max_coordinates = np.amax(y, axis=0)
     min_coordinates = np.amin(y, axis=0)
@@ -125,7 +125,7 @@ def plot_circles(y, icon_width, icon_height, label, cmap='Dark2', alpha=1.0, fig
         icon_size_ = max_icon_size
 
         circle = plt.Circle((x_, y_), (icon_size_ / 2), linewidth=0.5,
-                            edgecolor='white', alpha=alpha, facecolor=color_map(norm(label_)))
+                            edgecolor=edgecolor, alpha=alpha, facecolor=color_map(norm(label_)))
         axes.add_artist(circle)
 
         # rect = plt.Rectangle((x_, y_), icon_size_, icon_size_, linewidth=0.5,
@@ -385,9 +385,8 @@ def main_fig_fmnist():
         '#ffed6f'
     ])
 
-    plot_circles(y_overlap_removed, icon_width=icon_size,
-                 icon_height=icon_size, label=predicted,
-                 alpha=1.0, cmap=cmap,  figsize=(10, 10))
+    plot_circles(y_overlap_removed, icon_width=icon_size, icon_height=icon_size, label=predicted,
+                 alpha=1.0, cmap=cmap, edgecolor=None, figsize=(10, 10))
     plt.title('DGrid Scatterplot')
     plt.savefig("/Users/fpaulovich/Desktop/fmnist.png", dpi=400)
     plt.show()
