@@ -78,7 +78,7 @@ def plot_starglyphs(y, X, icon_width, icon_height, label, names=None,
     min_X = np.amin(X, axis=0)
     for i in range(len(X)):
         for j in (range(len(max_X))):
-            X[i][j] = (X[i][j]-min_X[j]) / (max_X[j]-min_X[j])
+            X[i][j] = (X[i][j] - min_X[j]) / (max_X[j] - min_X[j])
 
     norm = matplotlib.colors.Normalize(vmin=min_label, vmax=max_label)
     color_map = matplotlib.cm.get_cmap(cmap)
@@ -96,12 +96,12 @@ def plot_starglyphs(y, X, icon_width, icon_height, label, names=None,
         icon_size_ = max_icon_size
         draw_starglyph(x_, y_, icon_size_, X[i], axes, alpha=alpha, facecolor=color_map(norm(label_)))
         if names is not None:
-            plt.text(x_, (y_+icon_size_/2), names[i], horizontalalignment='center', fontsize=fontsize)
+            plt.text(x_, (y_ + icon_size_ / 2), names[i], horizontalalignment='center', fontsize=fontsize)
 
     axes.set_aspect(1)
 
 
-def plot_circles(y, icon_width, icon_height, label, cmap='Dark2', alpha=1.0):
+def plot_circles(y, icon_width, icon_height, label, cmap='Dark2', alpha=1.0, figsize=(5, 5)):
     max_icon_size = max(icon_width, icon_height)
     max_coordinates = np.amax(y, axis=0)
     min_coordinates = np.amin(y, axis=0)
@@ -112,7 +112,7 @@ def plot_circles(y, icon_width, icon_height, label, cmap='Dark2', alpha=1.0):
     norm = matplotlib.colors.Normalize(vmin=min_label, vmax=max_label)
     color_map = matplotlib.cm.get_cmap(cmap)
 
-    figure, axes = plt.subplots()
+    figure, axes = plt.subplots(figsize=figsize)
     plt.axis([min_coordinates[0] - max_icon_size,
               max_coordinates[0] + max_icon_size,
               min_coordinates[1] - max_icon_size,
@@ -213,7 +213,8 @@ def main3():
     start_time = time.time()
     # y_overlap_removed = DGrid(icon_width=icon_size, icon_height=icon_size, delta=2).fit_transform(y) # cbr-ilp-ir (icon=2.25)
     # y_overlap_removed = DGrid(icon_width=icon_size, icon_height=icon_size, delta=1).fit_transform(y) # cbrilpirson (icon=2.0)
-    y_overlap_removed = DGrid(icon_width=icon_size, icon_height=icon_size, delta=1).fit_transform(y)  # cbrilpirson (icon=2.0)
+    y_overlap_removed = DGrid(icon_width=icon_size, icon_height=icon_size, delta=1).fit_transform(
+        y)  # cbrilpirson (icon=2.0)
     print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
 
     # plot
@@ -236,7 +237,7 @@ def main4():
     df = df.drop(labels='Overall rank', axis=1)  # removing the column class
     df = df.drop(labels='Country or region', axis=1)  # removing the id class
     df = df.drop(labels='Score', axis=1)  # removing the id class
-    X = df.values # preprocessing.MinMaxScaler().fit_transform(df.values)
+    X = df.values  # preprocessing.MinMaxScaler().fit_transform(df.values)
 
     # read projection
     projection_file = "/Users/fpaulovich/Dropbox/Papers/2021/DGrid/dgrid/teaser/hapiness/happiness_umap_4_1_noScore_notNorm_overlap.csv"
@@ -308,7 +309,7 @@ def main_fig_cancer():
     y = TSNE(n_components=2, random_state=0).fit_transform(X)
 
     icon_size = 1.75
-    delta = 1.5
+    delta = 1.0
 
     # sort points according to target
     def to_point(x_, y_, label_):
@@ -333,7 +334,7 @@ def main_fig_cancer():
 
     # plot
     cmap = ListedColormap(['#6a3d9a', '#ff7f00'])
-    plot_circles(y, icon_width=icon_size, icon_height=icon_size, label=raw.target,
+    plot_circles(y_overlap_removed, icon_width=icon_size, icon_height=icon_size, label=raw.target,
                  alpha=0.95, cmap=cmap)
     plt.title('DGrid Scatterplot')
     plt.savefig("/Users/fpaulovich/Desktop/breast_cancer-" + str(delta) + ".png", dpi=400)
@@ -342,6 +343,56 @@ def main_fig_cancer():
     return
 
 
+def main_fig_fmnist():
+    # read multidimensional data
+    data_file = "/Users/fpaulovich/Dropbox/datasets/csv/fmnist_test_features.csv"
+    df = pd.read_csv(data_file, header=0, sep='[;,]', engine='python')
+
+    labels = df[df.columns[128]]  # get correct classes
+    predicted = df[df.columns[130]]  # get predicted classes
+    correct = df[df.columns[131]]  # get if the prediction was correct
+
+    # creating a new class when the item was incorrectly classified
+    for i in range(len(predicted)):
+        if correct[i] == 0:
+            predicted[i] = -1
+
+    df = df.drop(['label', 'is_test', 'predicted', 'correct'], axis=1)  # removing the column class
+    X = df.values
+
+    # apply dimensionality reduction
+    y = UMAP(n_components=2, n_neighbors=7, random_state=5).fit_transform(X)
+
+    icon_size = 0.15
+
+    # remove overlaps
+    start_time = time.time()
+    y_overlap_removed = DGrid(icon_width=icon_size, icon_height=icon_size, delta=2.0).fit_transform(y)
+    print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
+
+    # plot
+    cmap = ListedColormap([
+        '#e31a1c',
+        '#8dd3c7',
+        '#bebada',
+        '#80b1d3',
+        '#fdb462',
+        '#b3de69',
+        '#fccde5',
+        '#d9d9d9',
+        '#bc80bd',
+        '#ccebc5',
+        '#ffed6f'
+    ])
+
+    plot_circles(y_overlap_removed, icon_width=icon_size,
+                 icon_height=icon_size, label=predicted,
+                 alpha=1.0, cmap=cmap,  figsize=(10, 10))
+    plt.title('DGrid Scatterplot')
+    plt.savefig("/Users/fpaulovich/Desktop/fmnist.png", dpi=400)
+    plt.show()
+
+
 if __name__ == "__main__":
-    main_fig_cancer()
+    main_fig_fmnist()
     exit(0)
