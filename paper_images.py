@@ -17,7 +17,7 @@ import scatterplot as sct
 
 def main_fig_happiness():
     # read multidimensional data
-    data_file = "/Users/fpaulovich/Dropbox/datasets/csv/happines2019.csv"
+    data_file = "data/happines2019.csv"
     df = pd.read_csv(data_file, header=0, sep='[;,]', engine='python')
 
     names = df[df.columns[1]]  # get country names
