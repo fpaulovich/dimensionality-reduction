@@ -47,8 +47,8 @@ def main_fig_happiness():
 
     # plot
     sct.starglyphs(y_overlap_removed, X, icon_width=icon_size,
-                    icon_height=icon_size, label=labels, names=names,
-                    figsize=(25, 11), fontsize=6, alpha=0.75, cmap="cividis")
+                   icon_height=icon_size, label=labels, names=names,
+                   figsize=(25, 11), fontsize=6, alpha=0.75, cmap="cividis")
     sct.title('DGrid Scatterplot')
     sct.savefig("/Users/fpaulovich/Desktop/hapiness_dgrid.png", dpi=400)
     sct.show()
@@ -87,9 +87,9 @@ def main_fig_cancer():
     print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
 
     # plot
-    cmap = ListedColormap(['#6a3d9a', '#ff7f00'])
+    cmap = ListedColormap(['#e31a1c', '#aaaaaa'])
     sct.circles(y_overlap_removed, icon_width=icon_size, icon_height=icon_size, label=raw.target,
-                 alpha=0.95, cmap=cmap)
+                figsize=(11, 11), alpha=1.0, cmap=cmap)
     sct.title('DGrid Scatterplot')
     sct.savefig("/Users/fpaulovich/Desktop/breast_cancer-" + str(delta) + ".png", dpi=400)
     sct.show()
@@ -97,7 +97,7 @@ def main_fig_cancer():
 
 def main_fig_fmnist():
     # read multidimensional data
-    data_file = "/Users/fpaulovich/Dropbox/datasets/csv/fmnist_test_features.csv"
+    data_file = "data/fmnist_test_features.csv"
     df = pd.read_csv(data_file, header=0, sep='[;,]', engine='python')
 
     labels = df[df.columns[128]]  # get correct classes
@@ -145,13 +145,13 @@ def main_fig_fmnist():
         '#ffed6f'
     ])
 
-    sct. circles(y_overlap_removed, icon_width=icon_size, icon_height=icon_size, label=predicted_new,
-                 alpha=1.0, cmap=cmap, edgecolor=None, figsize=(10, 10))
+    sct.circles(y_overlap_removed, icon_width=icon_size, icon_height=icon_size, label=predicted_new,
+                alpha=1.0, cmap=cmap, edgecolor=None, figsize=(10, 10))
     sct.title('DGrid Scatterplot')
     sct.savefig("/Users/fpaulovich/Desktop/fmnist.png", dpi=400)
     sct.show()
 
 
 if __name__ == "__main__":
-    main_fig_happiness()
+    main_fig_cancer()
     exit(0)

@@ -12,10 +12,9 @@ def draw_starglyph(x, y, size, data, axes, facecolor, alpha):
     nr_points = len(data)
     increments = 360.0 / nr_points
 
-    # Path = mpath.Path
     path_data = [(mpath.Path.MOVETO, (x + ((size / 2) * math.cos(math.radians(0))) * data[0],
-                                y + ((size / 2) * math.sin(math.radians(0))) * data[0]
-                                ))]
+                                      y + ((size / 2) * math.sin(math.radians(0))) * data[0]
+                                      ))]
 
     for i in range(1, nr_points):
         x_ = x + ((size / 2) * math.cos(math.radians((i * increments)))) * data[i]
@@ -23,8 +22,8 @@ def draw_starglyph(x, y, size, data, axes, facecolor, alpha):
         path_data.append((mpath.Path.LINETO, (x_, y_)))
 
     path_data.append((mpath.Path.CLOSEPOLY, (x + ((size / 2) * math.cos(math.radians(0))) * data[0],
-                                       y + ((size / 2) * math.sin(math.radians(0))) * data[0]
-                                       )))
+                                             y + ((size / 2) * math.sin(math.radians(0))) * data[0]
+                                             )))
 
     codes, verts = zip(*path_data)
     path = mpath.Path(verts, codes)
@@ -121,7 +120,7 @@ def circles(projection, icon_width, icon_height, label,
 
 
 def rectangles(projection, icon_width, icon_height, label,
-            cmap='Dark2', alpha=1.0, figsize=(5, 5), linewidth=0.5, edgecolor='white'):
+               cmap='Dark2', alpha=1.0, figsize=(5, 5), linewidth=0.5, edgecolor='white'):
     max_icon_size = max(icon_width, icon_height)
     max_coordinates = np.amax(projection, axis=0)
     min_coordinates = np.amin(projection, axis=0)
@@ -164,6 +163,3 @@ def savefig(filename, dpi):
 
 def show():
     plt.show()
-
-
-
