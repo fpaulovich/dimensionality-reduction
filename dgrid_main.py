@@ -21,17 +21,17 @@ def main1():
     # apply dimensionality reduction
     y = ForceScheme().fit_transform(X)
 
-    icon_size = 1.0
+    glyph_size = 1.0
     delta = 15.0
 
     # remove overlaps
     start_time = time.time()
-    y_overlap_removed = DGrid(icon_width=icon_size, icon_height=icon_size, delta=delta).fit_transform(y)
+    y_overlap_removed = DGrid(glyph_width=glyph_size, glyph_height=glyph_size, delta=delta).fit_transform(y)
     print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
 
     # plot
-    sct.starglyphs(y_overlap_removed, X_orig, icon_width=icon_size, icon_height=icon_size, label=raw.target,
-                    cmap="Set2", figsize=(10, 10), alpha=0.75)
+    sct.starglyphs(y_overlap_removed, X_orig, glyph_width=glyph_size, glyph_height=glyph_size, label=raw.target,
+                   cmap="Set2", figsize=(10, 10), alpha=0.75)
     sct.title('DGrid IRIS Scatterplot')
     # sct.savefig("iris-" + str(delta) + ".png", dpi=400)
     sct.show()
@@ -45,8 +45,8 @@ def main2():
 
     df = pd.read_csv(input_file, header=0, delimiter=",")
     labels = df['label'].values  # getting labels
-    width_max = df['width'].max()  # getting the max icon width
-    height_max = df['height'].max()  # getting the max icon height
+    width_max = df['width'].max()  # getting the max glyph width
+    height_max = df['height'].max()  # getting the max glyph height
     y = df[['ux', 'uy']].values  # getting x and y coordinates
 
     # increase visible area (decrease glyphs sizes)
@@ -54,11 +54,11 @@ def main2():
 
     # remove overlaps
     start_time = time.time()
-    y_overlap_removed = DGrid(icon_width=width_max, icon_height=height_max, delta=delta).fit_transform(y)
+    y_overlap_removed = DGrid(glyph_width=width_max, glyph_height=height_max, delta=delta).fit_transform(y)
     print("--- DGrid executed in %s seconds ---" % (time.time() - start_time))
 
     # plot
-    sct.circles(y_overlap_removed, icon_width=width_max, icon_height=height_max, label=labels,
+    sct.circles(y_overlap_removed, glyph_width=width_max, glyph_height=height_max, label=labels,
                 cmap='Dark2', figsize=(20, 10))
     sct.title('DGrid Scatterplot Example')
     # sct.savefig("scatterplot-" + str(delta) + ".png", dpi=400)
@@ -79,16 +79,16 @@ def main3():
     y = TSNE(n_components=2, random_state=0).fit_transform(X)
 
     # setting glyph size and area increase
-    icon_size = 1.5
+    glyph_size = 1.5
     delta = 1.0
 
     # remove overlaps
     start_time = time.time()
-    y_overlap_removed = DGrid(icon_width=icon_size, icon_height=icon_size, delta=delta).fit_transform(y)
+    y_overlap_removed = DGrid(glyph_width=glyph_size, glyph_height=glyph_size, delta=delta).fit_transform(y)
     print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
 
     # plot
-    sct.circles(y_overlap_removed, icon_width=icon_size, icon_height=icon_size, label=labels,
+    sct.circles(y_overlap_removed, glyph_width=glyph_size, glyph_height=glyph_size, label=labels,
                 cmap='Dark2', figsize=(20, 10))
     sct.title('DGrid CBR-ILP-IR Scatterplot')
     # sct.savefig("cbr-ilp-ir.png", dpi=400)

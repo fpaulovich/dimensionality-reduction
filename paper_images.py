@@ -38,16 +38,16 @@ def main_fig_happiness():
     pca.fit(y)
     y = np.dot(y, pca.components_)
 
-    icon_size = 0.35
+    glyph_size = 0.35
 
     # remove overlaps
     start_time = time.time()
-    y_overlap_removed = DGrid(icon_width=icon_size, icon_height=icon_size, delta=1.0).fit_transform(y)
+    y_overlap_removed = DGrid(glyph_width=glyph_size, glyph_height=glyph_size, delta=1.0).fit_transform(y)
     print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
 
     # plot
-    sct.starglyphs(y_overlap_removed, X, icon_width=icon_size,
-                   icon_height=icon_size, label=labels, names=names,
+    sct.starglyphs(y_overlap_removed, X, glyph_width=glyph_size,
+                   glyph_height=glyph_size, label=labels, names=names,
                    figsize=(25, 11), fontsize=6, alpha=0.75, cmap="cividis")
     sct.title('DGrid Scatterplot')
     sct.savefig("/Users/fpaulovich/Desktop/hapiness_dgrid.png", dpi=400)
@@ -62,7 +62,7 @@ def main_fig_cancer():
     # apply dimensionality reduction
     y = TSNE(n_components=2, random_state=0).fit_transform(X)
 
-    icon_size = 1.75
+    glyph_size = 1.75
     delta = 1.0
 
     # sort points according to target
@@ -83,12 +83,12 @@ def main_fig_cancer():
 
     # remove overlaps
     start_time = time.time()
-    y_overlap_removed = DGrid(icon_width=icon_size, icon_height=icon_size, delta=delta).fit_transform(y)
+    y_overlap_removed = DGrid(glyph_width=glyph_size, glyph_height=glyph_size, delta=delta).fit_transform(y)
     print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
 
     # plot
     cmap = ListedColormap(['#e31a1c', '#aaaaaa'])
-    sct.circles(y_overlap_removed, icon_width=icon_size, icon_height=icon_size, label=raw.target,
+    sct.circles(y_overlap_removed, glyph_width=glyph_size, glyph_height=glyph_size, label=raw.target,
                 figsize=(11, 11), alpha=1.0, cmap=cmap)
     sct.title('DGrid Scatterplot')
     sct.savefig("/Users/fpaulovich/Desktop/breast_cancer-" + str(delta) + ".png", dpi=400)
@@ -123,11 +123,11 @@ def main_fig_fmnist():
     df_proj['correct'] = correct
     df_proj.to_csv("/Users/fpaulovich/Dropbox/datasets/csv/fmnist_test_features_proj.csv", sep=',')
 
-    icon_size = 0.15
+    glyph_size = 0.15
 
     # remove overlaps
     start_time = time.time()
-    y_overlap_removed = DGrid(icon_width=icon_size, icon_height=icon_size, delta=2.0).fit_transform(y)
+    y_overlap_removed = DGrid(glyph_width=glyph_size, glyph_height=glyph_size, delta=2.0).fit_transform(y)
     print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
 
     # plot
@@ -145,7 +145,7 @@ def main_fig_fmnist():
         '#ffed6f'
     ])
 
-    sct.circles(y_overlap_removed, icon_width=icon_size, icon_height=icon_size, label=predicted_new,
+    sct.circles(y_overlap_removed, glyph_width=glyph_size, glyph_height=glyph_size, label=predicted_new,
                 alpha=1.0, cmap=cmap, edgecolor=None, figsize=(10, 10))
     sct.title('DGrid Scatterplot')
     sct.savefig("/Users/fpaulovich/Desktop/fmnist.png", dpi=400)
@@ -153,5 +153,5 @@ def main_fig_fmnist():
 
 
 if __name__ == "__main__":
-    main_fig_cancer()
+    main_fig_happiness()
     exit(0)

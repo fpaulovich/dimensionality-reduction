@@ -34,13 +34,13 @@ def _density_calculation(count_map, mask, mask_size, x_min, x_max, y_min, y_max,
 class DGrid:
 
     def __init__(self,
-                 icon_width=1,
-                 icon_height=1,
+                 glyph_width=1,
+                 glyph_height=1,
                  delta=None,
                  callbacks=[]
                  ):
-        self.icon_width_ = icon_width
-        self.icon_height_ = icon_height
+        self.glyph_width_ = glyph_width
+        self.glyph_height_ = glyph_height
         self.delta_ = delta
 
         if self.delta_ is None:
@@ -63,13 +63,13 @@ class DGrid:
         bounding_box_height = max_coordinates[1] - min_coordinates[1]
 
         # defining the number of rows and columns
-        nr_columns = math.ceil((math.sqrt(self.delta_) * bounding_box_width) / self.icon_width_)
-        nr_rows = math.ceil((math.sqrt(self.delta_) * bounding_box_height) / self.icon_height_)
+        nr_columns = math.ceil((math.sqrt(self.delta_) * bounding_box_width) / self.glyph_width_)
+        nr_rows = math.ceil((math.sqrt(self.delta_) * bounding_box_height) / self.glyph_height_)
 
         # if the number of rows and columns are not enough to fit all data instances, increase delta
         if nr_rows * nr_columns < len(y):
-            nr_columns = (bounding_box_width / self.icon_width_)
-            nr_rows = (bounding_box_height / self.icon_height_)
+            nr_columns = (bounding_box_width / self.glyph_width_)
+            nr_rows = (bounding_box_height / self.glyph_height_)
             self.delta_ = len(y) / (nr_rows * nr_columns)
             nr_columns = math.ceil(math.sqrt(self.delta_) * nr_columns)
             nr_rows = math.ceil(math.sqrt(self.delta_) * nr_rows)
@@ -109,8 +109,8 @@ class DGrid:
         transformed = []
         for i in range(len(self.grid_)):
             if self.grid_[i]['dummy'] is False:
-                transformed.append(np.array([min_coordinates[0] + self.grid_[i]['j'] * self.icon_width_,
-                                             min_coordinates[1] + self.grid_[i]['i'] * self.icon_height_]))
+                transformed.append(np.array([min_coordinates[0] + self.grid_[i]['j'] * self.glyph_width_,
+                                             min_coordinates[1] + self.grid_[i]['i'] * self.glyph_height_]))
 
         self._trigger_callbacks("finish")
         return np.array(transformed)
@@ -170,7 +170,7 @@ class DGrid:
             count_map[row][col] = count_map[row][col] + 1
 
         # calculating the gaussian mask
-        mask_size = int(max(3, ((x_max - x_min) * (y_max - y_min)) / (size * self.icon_width_ * self.icon_height_)))
+        mask_size = int(max(3, ((x_max - x_min) * (y_max - y_min)) / (size * self.glyph_width_ * self.glyph_height_)))
         mask_size = mask_size + 1 if mask_size % 2 == 0 else mask_size
         mask = DGrid._gaussian_mask(mask_size, (mask_size - 1) / 6.0)
 
