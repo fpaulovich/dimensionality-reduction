@@ -5,7 +5,7 @@ import numpy as np
 from timeit import default_timer as timer
 from datetime import timedelta
 from sklearn import preprocessing
-from force_scheme import ForceScheme
+from force.force_scheme import ForceScheme
 
 
 def main():

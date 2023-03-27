@@ -2,7 +2,7 @@ import pandas as pd
 
 import time
 
-from force_scheme import ForceScheme
+from force.force_scheme import ForceScheme
 from sklearn.manifold import TSNE
 
 import sklearn.datasets as datasets
@@ -41,7 +41,7 @@ def main1():
 
 def main2():
     # load data
-    input_file = "data/scatterplot.csv"
+    input_file = "../data/scatterplot.csv"
 
     df = pd.read_csv(input_file, header=0, delimiter=",")
     labels = df['label'].values  # getting labels
@@ -68,7 +68,7 @@ def main2():
 
 
 def main3():
-    input_file = "data/cbr-ilp-ir.csv"
+    input_file = "../data/cbr-ilp-ir.csv"
     df = pd.read_csv(input_file, header=0, sep='[;,]', engine='python')
 
     labels = df[df.columns[len(df.columns) - 1]]  # get the last column as labels
