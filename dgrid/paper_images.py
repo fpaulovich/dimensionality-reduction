@@ -10,14 +10,14 @@ from umap import UMAP
 
 import sklearn.datasets as datasets
 from sklearn import preprocessing
-from dgrid.dgrid import DGrid
 
-from dgrid import scatterplot as sct
+from dgrid import DGrid
+import scatterplot as sct
 
 
 def main_fig_happiness():
     # read multidimensional data
-    data_file = "../data/happines2019.csv"
+    data_file = "./data/happines2019.csv"
     df = pd.read_csv(data_file, header=0, sep='[;,]', engine='python')
 
     names = df[df.columns[1]]  # get country names
@@ -97,7 +97,7 @@ def main_fig_cancer():
 
 def main_fig_fmnist():
     # read multidimensional data
-    data_file = "../data/fmnist_test_features.csv"
+    data_file = "./data/fmnist_test_features.csv"
     df = pd.read_csv(data_file, header=0, sep='[;,]', engine='python')
 
     labels = df[df.columns[128]]  # get correct classes
