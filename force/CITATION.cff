@@ -1,0 +1,8 @@
+cff-version: 0.0.1
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Paulovich
+    given-names: Fernando
+    orcid: https://orcid.org/0000-0002-2316-760X
+title: "Force Scheme"
+version: 0.0.1
