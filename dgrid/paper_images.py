@@ -50,7 +50,7 @@ def main_fig_happiness():
                    glyph_height=glyph_size, label=labels, names=names,
                    figsize=(25, 11), fontsize=6, alpha=0.75, cmap="cividis")
     sct.title('DGrid Scatterplot')
-    sct.savefig("/Users/fpaulovich/Desktop/hapiness_dgrid.png", dpi=400)
+    sct.savefig("hapiness_dgrid.png", dpi=400)
     sct.show()
 
 
@@ -91,7 +91,7 @@ def main_fig_cancer():
     sct.circles(y_overlap_removed, glyph_width=glyph_size, glyph_height=glyph_size, label=raw.target,
                 figsize=(11, 11), alpha=1.0, cmap=cmap)
     sct.title('DGrid Scatterplot')
-    sct.savefig("/Users/fpaulovich/Desktop/breast_cancer-" + str(delta) + ".png", dpi=400)
+    sct.savefig("breast_cancer-" + str(delta) + ".png", dpi=400)
     sct.show()
 
 
@@ -121,7 +121,7 @@ def main_fig_fmnist():
     df_proj['labels'] = labels
     df_proj['predicted'] = predicted
     df_proj['correct'] = correct
-    df_proj.to_csv("/Users/fpaulovich/Dropbox/datasets/csv/fmnist_test_features_proj.csv", sep=',')
+    df_proj.to_csv("fmnist_test_features_proj.csv", sep=',')
 
     glyph_size = 0.15
 
@@ -148,10 +148,73 @@ def main_fig_fmnist():
     sct.circles(y_overlap_removed, glyph_width=glyph_size, glyph_height=glyph_size, label=predicted_new,
                 alpha=1.0, cmap=cmap, edgecolor=None, figsize=(10, 10))
     sct.title('DGrid Scatterplot')
-    sct.savefig("/Users/fpaulovich/Desktop/fmnist.png", dpi=400)
+    sct.savefig("fmnist.png", dpi=400)
+    sct.show()
+
+
+def main_varying_delta():
+    # load data
+    input_file = "./data/scatterplot[0037].csv"
+
+    df = pd.read_csv(input_file, header=0, delimiter=",")
+    labels = df['label'].values  # getting labels
+    width_max = df['width'].max()  # getting the max glyph width
+    height_max = df['height'].max()  # getting the max glyph height
+    y = df[['ux', 'uy']].values  # getting x and y coordinates
+
+    min_x = df['ux'].min()
+    max_x = df['ux'].max()
+
+    min_y = df['uy'].min()
+    max_y = df['uy'].max()
+
+    bounding_box_width = max_x - min_x
+    bounding_box_height = max_y - min_y
+
+    nr_columns = (bounding_box_width / width_max)
+    nr_rows = (bounding_box_height / height_max)
+    delta = len(y) / (nr_rows * nr_columns)
+
+    print(bounding_box_width, bounding_box_height)
+    print(width_max, height_max)
+    print(len(y))
+
+    print("minimum delta:", delta)
+
+    # remove overlaps
+    start_time = time.time()
+    y_overlap_removed = DGrid(glyph_width=width_max, glyph_height=height_max, delta=delta).fit_transform(y)
+    print("--- DGrid executed in %s seconds ---" % (time.time() - start_time))
+
+    # plot
+    sct.circles(y_overlap_removed, glyph_width=width_max, glyph_height=height_max, label=labels,
+                cmap='Dark2', figsize=(20, 10))
+    sct.title('DGrid Scatterplot Example')
+    sct.savefig("scatterplot[0037]-fit" + str(delta) + ".png", dpi=400)
+    sct.show()
+
+    return
+
+
+def main_moons():
+    n_samples = 1000
+    noisy_moons = datasets.make_moons(n_samples=n_samples, noise=0.05, random_state=7)
+
+    glyph_size = 0.05
+    delta = 4.0
+
+    y_overlap_removed = DGrid(glyph_width=glyph_size, glyph_height=glyph_size, delta=delta).\
+        fit_transform(noisy_moons[0])
+
+    # plot
+    cmap = ListedColormap(['#e31a1c', '#aaaaaa'])
+    sct.circles(y_overlap_removed, glyph_width=glyph_size, glyph_height=glyph_size, label=noisy_moons[1],
+                figsize=(11, 11), alpha=1.0, cmap=cmap)
+    sct.title('DGrid Scatterplot')
+    sct.savefig("noise_moons-" + str(delta) + ".png", dpi=400)
     sct.show()
 
 
 if __name__ == "__main__":
-    main_fig_happiness()
+    main_moons()
     exit(0)

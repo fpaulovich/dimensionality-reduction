@@ -4,6 +4,9 @@ import time
 import numba
 
 from sklearn.neighbors import KDTree
+from typing import Literal
+
+RETURN_TYPE = Literal['coord', 'index']
 
 
 @numba.jit(nopython=True, parallel=False)
@@ -34,14 +37,16 @@ def _density_calculation(count_map, mask, mask_size, x_min, x_max, y_min, y_max,
 class DGrid:
 
     def __init__(self,
-                 glyph_width=1,
-                 glyph_height=1,
-                 delta=None,
+                 glyph_width: float = 1,
+                 glyph_height: float = 1,
+                 delta: float = None,
+                 return_type: RETURN_TYPE = 'coord',
                  callbacks=[]
                  ):
         self.glyph_width_ = glyph_width
         self.glyph_height_ = glyph_height
         self.delta_ = delta
+        self.return_type = return_type
 
         if self.delta_ is None:
             self.delta_ = 1
@@ -56,6 +61,7 @@ class DGrid:
 
     def _fit(self, y):
         self._trigger_callbacks("start fit")
+
         # calculating the bounding box
         max_coordinates = np.amax(y, axis=0)
         min_coordinates = np.amin(y, axis=0)
@@ -105,12 +111,27 @@ class DGrid:
         print("--- Grid assignment executed in %s seconds ---" % (time.time() - start_time))
 
         self._trigger_callbacks("end grid_rect")
-        # returning the overlap free scatterplot
+
+        # returning the overlap free scatterplot (or indexes)
         transformed = []
+
+        # returning coordinates inside the bounding box of the original scatterplot
+        min_coords_x = min_coordinates[0]
+        min_coords_y = min_coordinates[1]
+        glyph_width = self.glyph_width_
+        glyph_height = self.glyph_height_
+
+        # return grid indexes
+        if self.return_type == 'index':
+            min_coords_x = 0
+            min_coords_y = 0
+            glyph_width = 1
+            glyph_height = 1
+
         for i in range(len(self.grid_)):
             if self.grid_[i]['dummy'] is False:
-                transformed.append(np.array([min_coordinates[0] + self.grid_[i]['j'] * self.glyph_width_,
-                                             min_coordinates[1] + self.grid_[i]['i'] * self.glyph_height_]))
+                transformed.append(np.array([min_coords_x + self.grid_[i]['j'] * glyph_width,
+                                             min_coords_y + self.grid_[i]['i'] * glyph_height]))
 
         self._trigger_callbacks("finish")
         return np.array(transformed)

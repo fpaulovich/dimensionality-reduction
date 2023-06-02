@@ -26,7 +26,8 @@ def main1():
 
     # remove overlaps
     start_time = time.time()
-    y_overlap_removed = DGrid(glyph_width=glyph_size, glyph_height=glyph_size, delta=delta).fit_transform(y)
+    y_overlap_removed = DGrid(glyph_width=glyph_size, glyph_height=glyph_size,
+                              delta=delta, return_type='coord').fit_transform(y)
     print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
 
     # plot
