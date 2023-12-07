@@ -9,12 +9,12 @@ from force.force_scheme import ForceScheme
 
 
 def main():
-    raw = datasets.load_iris(as_frame=True)
+    raw = datasets.load_digits(as_frame=True)
     X = raw.data.to_numpy()
     X = preprocessing.StandardScaler().fit_transform(X)
 
     start = timer()
-    y = ForceScheme().fit_transform(X)
+    y = ForceScheme(max_it=1000).fit_transform(X)
     end = timer()
 
     print(np.amin(y, axis=0))
