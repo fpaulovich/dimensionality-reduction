@@ -2,54 +2,37 @@ import numpy as np
 import math
 
 from numpy import random
-from numba import njit, prange
+from numba import njit, prange, jit
 from scipy.spatial import distance
-
+from utils.min_k_inverted import calculate_k_distance
+from utils.distance import euclidean_distance_numba, get_distance
+from utils.sort import min_k_numba
+from force_scheme import move as move_original, iteration as iteration_original
 from sklearn.cluster import KMeans
 
-import heapq
+
+@njit(fastmath=False)
+def ij_to_matrix(i, j, size):
+    return (i * size) + (j - i)
 
 
-# @njit(parallel=False, fastmath=False)
-def create_distance_matrix(X, distance_function):
+@njit(fastmath=False)
+def size_to_matrix_size(size):
+    return int(size * (size + 1) / 2)
+
+
+# @njit(parallel=True, fastmath=False)
+def create_distance_matrix(X):
     size = len(X)
     distance_matrix = np.zeros(int(size * (size + 1) / 2), dtype=np.float32)
 
     k = 0
     for i in range(size):
         for j in range(i, size):
-            distance_matrix[k] = distance_function(X[i], X[j])
+            distance_matrix[k] = euclidean_distance_numba(X[i], X[j])
             k = k + 1
 
     return distance_matrix
-
-
-def calculate_k_distance(distance_matrix, nr_neighbors):
-    total = len(distance_matrix)
-    size = int((math.sqrt(1 + 8 * total) - 1) / 2)
-
-    # adjusting the number of neighbors in case it is larger than the dataset
-    nr_neighbors = min(nr_neighbors, size - 1)
-
-    k_distance = np.zeros(size, dtype=np.float32)
-
-    for i in range(size):
-        heap = []
-
-        for j in range(size):
-            r = (i + j - math.fabs(i - j)) / 2  # min(i,j)
-            s = (i + j + math.fabs(i - j)) / 2  # max(i,j)
-            drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
-
-            if i != j:
-                heapq.heappush(heap, drn)
-
-        for k in range(nr_neighbors - 1):
-            heapq.heappop(heap)
-
-        k_distance[i] = heapq.heappop(heap)
-
-    return k_distance
 
 
 def sanity_check(distance_matrix, avg_k_distance):
@@ -62,7 +45,9 @@ def sanity_check(distance_matrix, avg_k_distance):
         for j in range(size):
             r = (i + j - math.fabs(i - j)) / 2  # min(i,j)
             s = (i + j + math.fabs(i - j)) / 2  # max(i,j)
-            drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
+            drn = distance_matrix[
+                int(total - ((size - r) * (size - r + 1) / 2) + (s - r))
+            ]
 
             if drn <= avg_k_distance:
                 count = count + 1
@@ -70,108 +55,113 @@ def sanity_check(distance_matrix, avg_k_distance):
         print(count)
 
 
-@njit(parallel=True, fastmath=False)
-def move_local(ins1, k_distances, distance_matrix, projection, learning_rate, prob_threshold, max_dist):
+@njit(parallel=False, fastmath=False)
+def move_local(
+    ins1,
+    k_distances_idx,
+    k_distance,
+    distance_matrix,
+    projection,
+    learning_rate,
+    prob_threshold,
+    max_dist,
+    verbose,
+):
     size = len(projection)
     total = len(distance_matrix)
     error = 0
 
-    for ins2 in prange(size):
-        if ins1 != ins2:
-            x1x2 = projection[ins2][0] - projection[ins1][0]
-            y1y2 = projection[ins2][1] - projection[ins1][1]
-            dr2 = max(math.sqrt(x1x2 * x1x2 + y1y2 * y1y2), 0.0001)
+    # for ins2 in prange(size):
+    for i in range(k_distances_idx.shape[1]):
+        ins2 = k_distances_idx[ins1, i]
+        if ins2 == -1:
+            break
+        # if ins1 == ins2:
+        # continue
 
-            # getting te index in the distance matrix and getting the value
-            r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j)
-            s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j)
-            drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
+        x1x2 = projection[ins2][0] - projection[ins1][0]
+        y1y2 = projection[ins2][1] - projection[ins1][1]
+        dr2 = max(math.sqrt(x1x2 * x1x2 + y1y2 * y1y2), 0.0001)
 
-            prob = np.random.random()
+        # getting the index in the distance matrix and getting the value
+        drn = get_distance(distance_matrix, ins1, ins2, total, size)
 
-            if drn <= k_distances[ins2]:
-                # calculate the movement
-                delta = (drn - dr2)
-                error += math.fabs(delta)
+        # calculate the movement
+        delta = drn - dr2
+        error += math.fabs(delta)
 
-                # moving
-                projection[ins2][0] += learning_rate * delta * (x1x2 / dr2)
-                projection[ins2][1] += learning_rate * delta * (y1y2 / dr2)
-            elif prob < prob_threshold:
-                # calculate the movement
-                delta = (drn + (5*np.random.random()) * max_dist - dr2)
-                error += math.fabs(delta)
+        # moving
+        projection[ins2][0] += learning_rate * delta * (x1x2 / dr2)
+        projection[ins2][1] += learning_rate * delta * (y1y2 / dr2)
 
-                # moving
-                projection[ins2][0] += learning_rate * delta * (x1x2 / dr2)
-                projection[ins2][1] += learning_rate * delta * (y1y2 / dr2)
+    rand_idx = np.random.choice(int(size), int(size * prob_threshold))
+    for i in range(rand_idx.shape[0]):
+        ins2 = rand_idx[i]
+        if ins1 == ins2 or ins2 in k_distances_idx[ins1]:
+            continue
 
-    return error / size
+        x1x2 = projection[ins2][0] - projection[ins1][0]
+        y1y2 = projection[ins2][1] - projection[ins1][1]
+        dr2 = max(math.sqrt(x1x2 * x1x2 + y1y2 * y1y2), 0.0001)
 
+        # getting te index in the distance matrix and getting the value
+        drn = get_distance(distance_matrix, ins1, ins2, total, size)
 
-@njit(parallel=True, fastmath=False)
-def move_original(ins1, distance_matrix, projection, learning_rate):
-    size = len(projection)
-    total = len(distance_matrix)
-    error = 0
+        # calculate the movement
+        delta = drn + (5 * np.random.random()) * max_dist - dr2
+        error += math.fabs(delta)
 
-    for ins2 in prange(size):
-        if ins1 != ins2:
-            x1x2 = projection[ins2][0] - projection[ins1][0]
-            y1y2 = projection[ins2][1] - projection[ins1][1]
-            dr2 = max(math.sqrt(x1x2 * x1x2 + y1y2 * y1y2), 0.0001)
-
-            # getting te index in the distance matrix and getting the value
-            r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j)
-            s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j)
-            drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
-
-            # calculate the movement
-            delta = (drn - dr2)
-            error += math.fabs(delta)
-
-            # moving
-            projection[ins2][0] += learning_rate * delta * (x1x2 / dr2)
-            projection[ins2][1] += learning_rate * delta * (y1y2 / dr2)
+        # moving
+        projection[ins2][0] += learning_rate * delta * (x1x2 / dr2)
+        projection[ins2][1] += learning_rate * delta * (y1y2 / dr2)
 
     return error / size
 
 
 @njit(parallel=False, fastmath=False)
-def iteration_local(index, k_distances, distance_matrix, projection, learning_rate, prob_threshold, max_dist):
+def iteration_local(
+    index,
+    k_distances_idx,
+    k_distance,
+    distance_matrix,
+    projection,
+    learning_rate,
+    prob_threshold,
+    max_dist,
+    verbose,
+):
     size = len(projection)
     error = 0
 
     for i in range(size):
         ins1 = index[i]
-        error += move_local(ins1, k_distances, distance_matrix, projection, learning_rate, prob_threshold, max_dist)
-
-    return error / size
-
-
-@njit(parallel=False, fastmath=False)
-def iteration_original(index, distance_matrix, projection, learning_rate):
-    size = len(projection)
-    error = 0
-
-    for i in range(size):
-        ins1 = index[i]
-        error += move_original(ins1, distance_matrix, projection, learning_rate)
+        error += move_local(
+            ins1,
+            k_distances_idx,
+            k_distance,
+            distance_matrix,
+            projection,
+            learning_rate,
+            prob_threshold,
+            max_dist,
+            verbose,
+        )
 
     return error / size
 
 
 class LocalForceScheme:
-
-    def __init__(self,
-                 max_it=100,
-                 learning_rate0=0.5,
-                 decay=0.95,
-                 tolerance=0.00001,
-                 seed=7,
-                 prob_threshold=0.1,
-                 nr_neighbors=10):
-
+    def __init__(
+        self,
+        max_it=100,
+        learning_rate0=0.5,
+        decay=0.95,
+        tolerance=0.00001,
+        seed=7,
+        prob_threshold=0.1,
+        nr_neighbors=10,
+        verbose=False,
+    ):
         self.max_it_ = max_it
         self.learning_rate0_ = learning_rate0
         self.decay_ = decay
@@ -180,13 +170,18 @@ class LocalForceScheme:
         self.prob_threshold_ = prob_threshold
         self.nr_neighbors_ = nr_neighbors
         self.embedding_ = None
+        self.verbose = verbose
 
     def _fit(self, X, y, distance_function):
         # create a distance matrix
-        distance_matrix = create_distance_matrix(X, distance_function)
+        distance_matrix = create_distance_matrix(X)
         size = len(X)
 
-        k_distances = calculate_k_distance(distance_matrix, self.nr_neighbors_)
+        if self.verbose: print("distance matrix created")
+        k_distances_idx, k_distance = calculate_k_distance(
+            distance_matrix, self.nr_neighbors_
+        )
+        if self.verbose: print("k distances calculated")
         # k_distances.fill(np.median(k_distances))
         # sanity_check(distance_matrix, avg_k_distance)
 
@@ -206,11 +201,15 @@ class LocalForceScheme:
         error = math.inf
         global_it = 50
         for k in range(global_it):
-            learning_rate = self.learning_rate0_ * math.pow((1 - k / global_it), self.decay_)
-            new_error = iteration_original(index, distance_matrix, self.embedding_, learning_rate)
+            learning_rate = self.learning_rate0_ * math.pow(
+                (1 - k / global_it), self.decay_
+            )
+            new_error = iteration_original(
+                index, distance_matrix, self.embedding_, learning_rate
+            )
 
             if math.fabs(new_error - error) < self.tolerance_:
-                print('nr iterations global: ', k)
+                print("nr iterations global: ", k)
                 break
 
             error = new_error
@@ -219,12 +218,26 @@ class LocalForceScheme:
         error = math.inf
         max_dist = max(distance_matrix)
         for k in range(self.max_it_):
-            learning_rate = self.learning_rate0_ * math.pow((1 - k / self.max_it_), self.decay_)
-            new_error = iteration_local(index, k_distances, distance_matrix, self.embedding_, learning_rate,
-                                        self.prob_threshold_, max_dist)
+            if self.verbose:
+                print("iteration: ", k + 1, error)
+            learning_rate = self.learning_rate0_ * math.pow(
+                (1 - k / self.max_it_), self.decay_
+            )
+            new_error = iteration_local(
+                index,
+                k_distances_idx,
+                k_distance,
+                distance_matrix,
+                self.embedding_,
+                learning_rate,
+                self.prob_threshold_,
+                max_dist,
+                self.verbose,
+            )
 
             if math.fabs(new_error - error) < self.tolerance_:
-                print('nr iterations local: ', k)
+                if self.verbose:
+                    print("nr iterations local: ", k)
                 break
 
             error = new_error
