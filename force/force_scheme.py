@@ -35,10 +35,12 @@ def move(ins1, distance_matrix, projection, learning_rate):
             # getting te index in the distance matrix and getting the value
             r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j)
             s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j)
-            drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
+            drn = distance_matrix[
+                int(total - ((size - r) * (size - r + 1) / 2) + (s - r))
+            ]
 
             # calculate the movement
-            delta = (drn - dr2)
+            delta = drn - dr2
             error += math.fabs(delta)
 
             # moving
@@ -61,14 +63,9 @@ def iteration(index, distance_matrix, projection, learning_rate):
 
 
 class ForceScheme:
-
-    def __init__(self,
-                 max_it=100,
-                 learning_rate0=0.5,
-                 decay=0.95,
-                 tolerance=0.00001,
-                 seed=7):
-
+    def __init__(
+        self, max_it=100, learning_rate0=0.5, decay=0.95, tolerance=0.00001, seed=7
+    ):
         self.max_it_ = max_it
         self.learning_rate0_ = learning_rate0
         self.decay_ = decay
@@ -96,8 +93,12 @@ class ForceScheme:
         # iterate until max_it or if the error does not change more than the tolerance
         error = math.inf
         for k in range(self.max_it_):
-            learning_rate = self.learning_rate0_ * math.pow((1 - k / self.max_it_), self.decay_)
-            new_error = iteration(index, distance_matrix, self.embedding_, learning_rate)
+            learning_rate = self.learning_rate0_ * math.pow(
+                (1 - k / self.max_it_), self.decay_
+            )
+            new_error = iteration(
+                index, distance_matrix, self.embedding_, learning_rate
+            )
 
             if math.fabs(new_error - error) < self.tolerance_:
                 break
