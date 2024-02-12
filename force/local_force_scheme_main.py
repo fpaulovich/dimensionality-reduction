@@ -29,8 +29,7 @@ def main():
                 cmap='tab10', edgecolors='face', linewidths=0.5, s=4)
     ax.grid(linestyle='dotted')
 
-    legend1 = ax.legend(*scatter.legend_elements(),
-                        loc="upper left", title="Ranking")
+    legend1 = ax.legend(*scatter.legend_elements(), loc="lower right", title="class")
     ax.add_artist(legend1)
 
     plt.show()

@@ -52,6 +52,37 @@ def calculate_k_distance(distance_matrix, nr_neighbors):
     return k_distance
 
 
+def calculate_k_nn_graph(distance_matrix, nr_neighbors):
+    total = len(distance_matrix)
+    size = int((math.sqrt(1 + 8 * total) - 1) / 2)
+
+    # adjusting the number of neighbors in case it is larger than the dataset
+    nr_neighbors = min(nr_neighbors, size - 1)
+
+    # k_nn_graph =  np.zeros((size, nr_neighbors), dtype=np.float32)
+    k_nn_graph = [[] for i in range(size)]
+
+    for i in range(size):
+        heap = []
+
+        for j in range(size):
+            r = (i + j - math.fabs(i - j)) / 2  # min(i,j)
+            s = (i + j + math.fabs(i - j)) / 2  # max(i,j)
+            drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
+
+            if i != j:
+                heapq.heappush(heap, (drn, j))
+
+        for k in range(nr_neighbors):
+            item = heapq.heappop(heap)
+            k_nn_graph[i].append([item[1], item[0]])
+            k_nn_graph[item[1]].append([i, item[0]])
+
+        print(len(k_nn_graph[i]))
+
+    return k_nn_graph
+
+
 def sanity_check(distance_matrix, avg_k_distance):
     total = len(distance_matrix)
     size = int((math.sqrt(1 + 8 * total) - 1) / 2)
@@ -189,6 +220,8 @@ class LocalForceScheme:
         k_distances = calculate_k_distance(distance_matrix, self.nr_neighbors_)
         # k_distances.fill(np.median(k_distances))
         # sanity_check(distance_matrix, avg_k_distance)
+
+        # k_nn_graph = calculate_k_nn_graph(distance_matrix, self.nr_neighbors_)
 
         # set the random seed
         np.random.seed(self.seed_)
