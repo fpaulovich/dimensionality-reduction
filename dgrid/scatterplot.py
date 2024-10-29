@@ -84,8 +84,8 @@ def starglyphs(projection, dataset, glyph_width, glyph_height, label, names=None
     axes.set_aspect(1)
 
 
-def circles(projection, glyph_width, glyph_height, label,
-            cmap='Dark2', alpha=1.0, figsize=(5, 5), linewidth=0.5, edgecolor='white'):
+def circles(projection, glyph_width, glyph_height, label, names=None,
+            cmap='Dark2', alpha=1.0, figsize=(5, 5), linewidth=0.5, edgecolor='white', fontsize=6):
     max_glyph_size = max(glyph_width, glyph_height)
     max_coordinates = np.amax(projection, axis=0)
     min_coordinates = np.amin(projection, axis=0)
@@ -114,6 +114,9 @@ def circles(projection, glyph_width, glyph_height, label,
                             alpha=alpha,
                             facecolor=color_map(norm(label_)))
         axes.add_artist(circle)
+
+        if names is not None:
+            plt.text(x_, y_, names[i], horizontalalignment='center', fontsize=fontsize)
 
     axes.set_aspect(1)
 
