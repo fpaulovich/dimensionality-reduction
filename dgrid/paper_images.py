@@ -25,7 +25,7 @@ def main_fig_happiness():
 
     # trunk names size
     for i in range(len(names)):
-        names[i] = names[i][:9]
+        names[i] = names[i][:5]
 
     df = df.drop(['Score', 'Overall rank', 'Country or region'], axis=1)  # removing the column class
     X = df.values
@@ -34,21 +34,24 @@ def main_fig_happiness():
     y = UMAP(n_components=2, n_neighbors=7, random_state=5).fit_transform(X)
 
     # rotate
-    pca = PCA(n_components=2)
-    pca.fit(y)
-    y = np.dot(y, pca.components_)
+    # pca = PCA(n_components=2)
+    # pca.fit(y)
+    # y = np.dot(y, pca.components_)
 
-    glyph_size = 0.35
+    glyph_size = 0.5
+    delta = 2
 
     # remove overlaps
     start_time = time.time()
-    y_overlap_removed = DGrid(glyph_width=glyph_size, glyph_height=glyph_size, delta=1.0).fit_transform(y)
+    y_overlap_removed = DGrid(glyph_width=glyph_size, glyph_height=glyph_size, delta=delta).fit_transform(y)
     print("--- DGrid execution %s seconds ---" % (time.time() - start_time))
 
     # plot
-    sct.starglyphs(y_overlap_removed, X, glyph_width=glyph_size,
-                   glyph_height=glyph_size, label=labels, names=names,
-                   figsize=(25, 11), fontsize=6, alpha=0.75, cmap="cividis")
+    # sct.starglyphs(y_overlap_removed, X, glyph_width=glyph_size,
+    #                glyph_height=glyph_size, label=labels, names=names,
+    #                figsize=(25, 11), fontsize=6, alpha=0.75, cmap="cividis")
+    sct.circles(y_overlap_removed, glyph_width=glyph_size, glyph_height=glyph_size, label=labels, names=names,
+                figsize=(25, 11), alpha=0.75, fontsize=6, cmap="cividis")
     sct.title('DGrid Scatterplot')
     sct.savefig("hapiness_dgrid.png", dpi=400)
     sct.show()
@@ -216,5 +219,5 @@ def main_moons():
 
 
 if __name__ == "__main__":
-    main_moons()
+    main_fig_happiness()
     exit(0)

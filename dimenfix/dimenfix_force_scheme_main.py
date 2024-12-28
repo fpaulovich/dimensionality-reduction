@@ -5,9 +5,9 @@ import numpy as np
 from timeit import default_timer as timer
 from datetime import timedelta
 from sklearn import preprocessing
-from dimenfix.dimenfix_force_scheme import DimenFixForceScheme
+from dimenfix_force_scheme import DimenFixForceScheme
 
-from dimenfix.dimenfix_force_scheme import rotate
+from dimenfix import rotate
 from sklearn.datasets import make_blobs
 
 
@@ -32,7 +32,7 @@ def test_rotation():
 
 
 def main():
-    raw = datasets.load_digits(as_frame=True)
+    raw = datasets.load_breast_cancer(as_frame=True)
     X = raw.data.to_numpy()
     X = preprocessing.MinMaxScaler().fit_transform(X)
 
@@ -47,7 +47,7 @@ def main():
                             iterations_to_pull=5,
                             fixed_feature=fixed_feature,
                             feature_type='nominal',
-                            alpha=1).fit_transform(X)
+                            alpha=1.0).fit_transform(X)
     end = timer()
 
     # print(np.amin(y, axis=0))
@@ -56,7 +56,7 @@ def main():
 
     plt.figure()
     plt.scatter(y[:, 0], y[:, 1], c=fixed_feature,
-                cmap='viridis', edgecolors='face', linewidths=0.5, s=12)
+                cmap='tab10', edgecolors='face', linewidths=0.5, s=12)
     plt.grid(linestyle='dotted')
     plt.show()
 
