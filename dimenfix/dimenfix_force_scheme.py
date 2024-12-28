@@ -7,7 +7,7 @@ from scipy.spatial import distance
 
 from dimenfix import DimenFix
 
-from log import print_layout
+from log import print_layout, clean
 
 
 # @njit(parallel=False, fastmath=False)
@@ -106,10 +106,7 @@ class DimenFixForceScheme:
         if self.n_components_ != 2:
             raise ValueError('Only 2 components supported for the reduction!')
 
-        # init DimenFix
-        dfix = DimenFix(feature_type=self.feature_type_,
-                        pulling_strategy=self.pulling_strategy_,
-                        alpha=self.alpha_).fit(self.fixed_feature_)
+        clean()
 
         # set the random seed
         np.random.seed(self.seed_)
@@ -122,6 +119,11 @@ class DimenFixForceScheme:
                 self.embedding_ = y
             else:
                 raise ValueError('The n_components should be equal to the number of dimensions of the input embedding!')
+
+        # init DimenFix
+        dfix = DimenFix(feature_type=self.feature_type_,
+                        pulling_strategy=self.pulling_strategy_,
+                        alpha=self.alpha_).fit(self.embedding_, self.fixed_feature_)
 
         # create random index
         index = np.random.permutation(size)

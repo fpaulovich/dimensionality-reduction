@@ -7,8 +7,36 @@ from datetime import timedelta
 from sklearn import preprocessing
 from dimenfix_force_scheme import DimenFixForceScheme
 
-from dimenfix import rotate
+from dimenfix import rotate, split_groups, calculate_centroids, compute_positions_nominal
 from sklearn.datasets import make_blobs
+
+
+def test_centroids():
+    embedding, label = make_blobs(n_samples=100, centers=10, n_features=2)
+
+    groups = split_groups(label)
+    centroids = calculate_centroids(embedding, groups)
+
+    print(centroids)
+
+    compute_positions_nominal(embedding, groups)
+
+    # plt.figure()
+    # plt.scatter(embedding[:, 0], embedding[:, 1], c=label,
+    #             cmap='tab10', edgecolors='face', linewidths=0.5, s=12)
+    # plt.grid(linestyle='dotted')
+    # plt.show()
+
+
+def test_groups():
+    raw = datasets.load_digits(as_frame=True)
+    label = raw.target
+
+    groups = split_groups(label)
+
+    print(len(groups))
+    print(groups)
+
 
 
 def test_rotation():
@@ -32,7 +60,7 @@ def test_rotation():
 
 
 def main():
-    raw = datasets.load_breast_cancer(as_frame=True)
+    raw = datasets.load_wine(as_frame=True)
     X = raw.data.to_numpy()
     X = preprocessing.MinMaxScaler().fit_transform(X)
 

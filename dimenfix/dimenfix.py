@@ -11,24 +11,62 @@ PULLING_TYPES = {'clipping', 'gaussian', 'rescale'}
 DATA_TYPES = {'nominal', 'numeric_ordinal'}
 
 
-def rotate(y, labels):
-    size = len(y)
+def split_groups(label):
+    groups = []
 
-    # calculate clusters centroids
-    labels_unique = list(set(labels))
-    centroids = np.zeros((len(labels_unique), 2), dtype=np.float32)
-    sizes = np.zeros(len(labels_unique), dtype=np.float32)
+    # find unique labels
+    labels_unique = list(set(label))
 
     labels_dict = {}
     for i in range(len(labels_unique)):
         labels_dict[labels_unique[i]] = i
+        groups.append([])
 
-    for i in range(size):
-        centroids[labels_dict[labels[i]]] = centroids[labels_dict[labels[i]]] + y[i]
-        sizes[labels_dict[labels[i]]] = sizes[labels_dict[labels[i]]] + 1
+    for i in range(len(label)):
+        groups[labels_dict[label[i]]].append(i)
+
+    return groups
+
+
+def calculate_centroids(embedding, groups):
+    nr_centroids = len(groups)
+    centroids = np.zeros((nr_centroids, 2), dtype=np.float32)
+
+    for i in range(nr_centroids):
+        for j in range(len(groups[i])):
+            centroids[i] = centroids[i] + embedding[groups[i][j]]
+        centroids[i] = centroids[i] / len(groups[i])
+
+    return centroids
+
+
+def compute_positions_nominal(embedding, groups):
+    centroids = calculate_centroids(embedding, groups)
+
+    groups_centroids = []
+    for i in range(len(centroids)):
+        groups_centroids.append([i, centroids[i][0], centroids[i][1]])
+
+    # order centroids considering their x-coordinates
+    groups_centroids.sort(key=lambda x: x[1])
+    centroids_order = []
+    for i in range(len(centroids)):
+        centroids_order.append(groups_centroids[i][0])
+
+    positions = np.zeros(len(embedding), dtype=np.float32)
 
     for i in range(len(centroids)):
-        centroids[i] = centroids[i] / sizes[i]
+        for j in range(len(groups[i])):
+            positions[groups[i][j]] = (2 * centroids_order.index(i) + 1) / (2 * len(centroids))
+
+    return positions
+
+
+def rotate(embedding, groups):
+    size = len(embedding)
+
+    # calculate centroids
+    centroids = calculate_centroids(embedding, groups)
 
     # finding the farthest centroids
     max_dist = 0
@@ -49,7 +87,7 @@ def rotate(y, labels):
                 max_dist = dist
 
     # move projection centroid to the origin
-    y = y - p0
+    embedding = embedding - p0
 
     # rotate
     v = (p1 - p0) / np.linalg.norm(p1 - p0)  # vector into the positive direction of x
@@ -57,39 +95,24 @@ def rotate(y, labels):
     sin = np.sign(v[1]) * math.sqrt(1 - cos * cos)
 
     for i in range(size):
-        x_coord = cos * y[i][0] + sin * y[i][1]
-        y_coord = -sin * y[i][0] + cos * y[i][1]
-        y[i][0] = x_coord
-        y[i][1] = y_coord
+        x_coord = cos * embedding[i][0] + sin * embedding[i][1]
+        y_coord = -sin * embedding[i][0] + cos * embedding[i][1]
+        embedding[i][0] = x_coord
+        embedding[i][1] = y_coord
 
     # add projection centroid back
     # y = y + mean
-    y = y - np.amin(y, axis=0)
+    embedding = embedding - np.amin(embedding, axis=0)
 
-    return y
+    return embedding
 
 
-def compute_positions(fixed_feature, feature_type):
-    if feature_type == 'nominal':
-        fixed_feature_unique = list(set(fixed_feature))
-        positions = np.zeros(len(fixed_feature), dtype=np.float32)
+def compute_positions_ordinal(fixed_feature):
+    min_val = min(fixed_feature)
+    max_val = max(fixed_feature)
 
-        labels_dict = {}
-        for i in range(len(fixed_feature_unique)):
-            labels_dict[fixed_feature_unique[i]] = i + 1
-
-        for i in range(len(fixed_feature)):
-            positions[i] = (2 * labels_dict[fixed_feature[i]] - 1) / (2 * len(fixed_feature_unique))
-
-        return positions
-    elif feature_type == 'numeric_ordinal':
-        min_val = min(fixed_feature)
-        max_val = max(fixed_feature)
-
-        # normalizing the fixed feature to [0,1]
-        return (fixed_feature - min_val) / (max_val - min_val)
-    else:
-        return None
+    # normalizing the fixed feature to [0,1]
+    return (fixed_feature - min_val) / (max_val - min_val)
 
 
 # calculate adaptively intervals according to the features values
@@ -135,26 +158,6 @@ def clipping_pull(y, intervals):
     return y
 
 
-
-
-    # def compute_labels_order(y, labels):
-    #     labels_unique = list(set(labels))
-    #     centroids = np.zeros(len(labels_unique), dtype=np.float32)
-    #     instances_per_label = np.zeros(len(labels_unique), dtype=np.float32)
-    #
-    #     labels_dict = {}
-    #     for i in range(len(labels_unique)):
-    #         labels_dict[labels_unique[i]] = i
-    #
-    #     for i in range(len(labels)):
-    #         centroids[labels_unique[labels[i]]] = centroids[labels_unique[labels[i]]] + y[i][0]
-    #         instances_per_label[labels_unique[labels[i]]] = instances_per_label[labels_unique[labels[i]]] + 1
-    #
-    #     labels_centroids_dict = {}
-    #     for i in range(len(labels_unique)):
-    #         labels_centroids_dict[labels_unique[i]] = centroids[i] / instances_per_label[i]
-
-
 class DimenFix:
 
     def __init__(self,
@@ -167,16 +170,24 @@ class DimenFix:
         self.alpha_ = alpha
         self.positions_ = None
         self.intervals_ = None
+        self.groups_ = None
 
-    def fit(self, fixed_feature):
+    def fit(self, embedding, fixed_feature):
         if self.feature_type_ not in DATA_TYPES:
             raise ValueError("results: feature_type must be one of %r." % DATA_TYPES)
 
         if self.pulling_strategy_ not in PULLING_TYPES:
             raise ValueError("results: pulling_strategy must be one of %r." % PULLING_TYPES)
 
+        # if feature is nominal, create groups of instances based on the fixed_feature
+        if self.feature_type_ == 'nominal':
+            self.groups_ = split_groups(fixed_feature)
+
         # compute positions
-        self.positions_ = compute_positions(fixed_feature, self.feature_type_)
+        if self.feature_type_ == 'nominal':
+            self.positions_ = compute_positions_nominal(embedding, self.groups_)
+        elif self.feature_type_ == 'numeric_ordinal':
+            self.positions_ = compute_positions_ordinal(fixed_feature)
 
         # compute intervals
         self.intervals_ = compute_intervals(self.positions_, self.alpha_)
@@ -186,7 +197,9 @@ class DimenFix:
     def transform(self, embedding):
         # rotate
         if self.feature_type_ == 'nominal':
-            embedding = rotate(embedding, self.positions_)
+            embedding = rotate(embedding, self.groups_)
+            self.positions_ = compute_positions_nominal(embedding, self.groups_)
+            self.intervals_ = compute_intervals(self.positions_, self.alpha_)
 
             print_layout(embedding, self.positions_, title="after dimenfix (rotate)")
 

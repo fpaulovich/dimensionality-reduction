@@ -3,6 +3,14 @@ import time
 import os
 
 
+def clean():
+    os.makedirs("./log", exist_ok=True)
+
+    for filename in os.listdir("./log"):
+        if filename.endswith('.png'):
+            os.remove(os.path.join("./log", filename))
+
+
 def print_layout(y, label, title=None):
     plt.figure()
     plt.scatter(y[:, 0], y[:, 1], c=label,
