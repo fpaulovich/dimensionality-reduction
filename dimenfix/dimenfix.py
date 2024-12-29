@@ -1,7 +1,7 @@
 import numpy as np
 import math
 
-from log import print_layout
+from log import print_layout, clean
 
 from numpy import random
 from numba import njit, prange
@@ -158,6 +158,28 @@ def clipping_pull(y, intervals):
     return y
 
 
+def rescale_pull(embedding, groups, intervals):
+    for group in groups:
+        # getting the max and min x-coordinate in the projection
+        min_x = embedding[group[0]][0]
+        max_x = embedding[group[0]][0]
+
+        for index in group:
+            if embedding[index][0] > max_x:
+                max_x = embedding[index][0]
+            elif embedding[index][0] < min_x:
+                min_x = embedding[index][0]
+
+        # getting the min and max range
+        min_range = intervals[group[0]][0]
+        max_range = intervals[group[0]][1]
+
+        for index in group:
+            embedding[index][0] = (((embedding[index][0] - min_x) / (max_x - min_x)) * (max_range-min_range)) + min_range
+
+    return embedding
+
+
 class DimenFix:
 
     def __init__(self,
@@ -192,16 +214,21 @@ class DimenFix:
         # compute intervals
         self.intervals_ = compute_intervals(self.positions_, self.alpha_)
 
+        clean()
+
         return self
 
     def transform(self, embedding):
-        # rotate
+        print_layout(embedding, self.positions_, title="before dimenfix")
+
+        # rotate and calculate labels position
         if self.feature_type_ == 'nominal':
             embedding = rotate(embedding, self.groups_)
-            self.positions_ = compute_positions_nominal(embedding, self.groups_)
-            self.intervals_ = compute_intervals(self.positions_, self.alpha_)
 
             print_layout(embedding, self.positions_, title="after dimenfix (rotate)")
+
+            self.positions_ = compute_positions_nominal(embedding, self.groups_)
+            self.intervals_ = compute_intervals(self.positions_, self.alpha_)
 
         # pull
         if self.pulling_strategy_ == 'clipping':
@@ -209,7 +236,7 @@ class DimenFix:
         elif self.pulling_strategy_ == 'gaussian':
             print('gaussian')
         elif self.pulling_strategy_ == 'rescale':
-            print('rescale')
+            embedding = rescale_pull(embedding, self.groups_, self.intervals_)
 
         print_layout(embedding, self.positions_, title="after dimenfix (pull)")
 

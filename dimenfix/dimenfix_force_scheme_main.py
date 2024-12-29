@@ -60,7 +60,7 @@ def test_rotation():
 
 
 def main():
-    raw = datasets.load_wine(as_frame=True)
+    raw = datasets.load_breast_cancer(as_frame=True)
     X = raw.data.to_numpy()
     X = preprocessing.MinMaxScaler().fit_transform(X)
 
@@ -75,6 +75,7 @@ def main():
                             iterations_to_pull=5,
                             fixed_feature=fixed_feature,
                             feature_type='nominal',
+                            pulling_strategy='rescale',
                             alpha=1.0).fit_transform(X)
     end = timer()
 

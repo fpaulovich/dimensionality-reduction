@@ -7,8 +7,6 @@ from scipy.spatial import distance
 
 from dimenfix import DimenFix
 
-from log import print_layout, clean
-
 
 # @njit(parallel=False, fastmath=False)
 def create_distance_matrix(X, distance_function):
@@ -106,8 +104,6 @@ class DimenFixForceScheme:
         if self.n_components_ != 2:
             raise ValueError('Only 2 components supported for the reduction!')
 
-        clean()
-
         # set the random seed
         np.random.seed(self.seed_)
 
@@ -133,8 +129,6 @@ class DimenFixForceScheme:
         for k in range(self.max_it_):
             learning_rate = self.learning_rate0_ * math.pow((1 - k / self.max_it_), self.decay_)
             new_error = iteration(index, distance_matrix, self.embedding_, learning_rate)
-
-            print_layout(self.embedding_, self.fixed_feature_, title="before dimenfix")
 
             # pull  (x-coordinate is fixed)
             if (k + 1) % self.iterations_to_pull_ == 0:
