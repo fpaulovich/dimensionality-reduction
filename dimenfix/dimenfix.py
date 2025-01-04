@@ -1,14 +1,13 @@
 import numpy as np
 import math
+import scipy.stats as st
 
 from log import print_layout, clean
 
-from numpy import random
-from numba import njit, prange
-from scipy.spatial import distance
+active = False
 
 PULLING_TYPES = {'clipping', 'gaussian', 'rescale'}
-DATA_TYPES = {'nominal', 'numeric_ordinal'}
+DATA_TYPES = {'nominal', 'ordinal'}
 
 
 def split_groups(label):
@@ -150,12 +149,13 @@ def compute_intervals(positions, alpha):
     return final_intervals
 
 
-def clipping_pull(y, intervals):
-    for i in range(len(y)):
+def clipping_pull(embedding, intervals):
+    for i in range(len(embedding)):
         min_int = intervals[i][0]
         max_int = intervals[i][1]
-        y[i][0] = min_int if y[i][0] < min_int else (max_int if y[i][0] > max_int else y[i][0])
-    return y
+        embedding[i][0] = min_int if embedding[i][0] < min_int else \
+            (max_int if embedding[i][0] > max_int else embedding[i][0])
+    return embedding
 
 
 def rescale_pull(embedding, groups, intervals):
@@ -175,8 +175,27 @@ def rescale_pull(embedding, groups, intervals):
         max_range = intervals[group[0]][1]
 
         for index in group:
-            embedding[index][0] = (((embedding[index][0] - min_x) / (max_x - min_x)) * (max_range-min_range)) + min_range
+            embedding[index][0] = (((embedding[index][0] - min_x) / (max_x - min_x)) *
+                                   (max_range - min_range)) + min_range
 
+    return embedding
+
+
+def gaussian_pull(embedding, positions, intervals):
+    confidence_interval = 0.45
+    z_score = st.norm.ppf((1 - confidence_interval) / 2)
+
+    for i in range(len(embedding)):
+        min_int = intervals[i][0]
+        max_int = intervals[i][1]
+
+        gaussian_range = (math.fabs(positions[i] - min_int) if embedding[i][0] < positions[i]
+                          else math.fabs(max_int - positions[i]))
+        sigma = gaussian_range / z_score
+
+        axis_difference = embedding[i][0] - positions[i]
+        moving_to_ratio = math.exp(-(axis_difference ** 2 / (2 * (sigma ** 2))))
+        embedding[i][0] = positions[i] + (moving_to_ratio * axis_difference)
     return embedding
 
 
@@ -201,6 +220,9 @@ class DimenFix:
         if self.pulling_strategy_ not in PULLING_TYPES:
             raise ValueError("results: pulling_strategy must be one of %r." % PULLING_TYPES)
 
+        if self.pulling_strategy_ == 'rescale' and self.feature_type_ == 'ordinal':
+            raise ValueError("results: pulling_strategy rescale cannot be used with feature_type ordinal.")
+
         # if feature is nominal, create groups of instances based on the fixed_feature
         if self.feature_type_ == 'nominal':
             self.groups_ = split_groups(fixed_feature)
@@ -208,24 +230,24 @@ class DimenFix:
         # compute positions
         if self.feature_type_ == 'nominal':
             self.positions_ = compute_positions_nominal(embedding, self.groups_)
-        elif self.feature_type_ == 'numeric_ordinal':
+        elif self.feature_type_ == 'ordinal':
             self.positions_ = compute_positions_ordinal(fixed_feature)
 
         # compute intervals
         self.intervals_ = compute_intervals(self.positions_, self.alpha_)
 
-        clean()
+        clean(active=active)
 
         return self
 
     def transform(self, embedding):
-        print_layout(embedding, self.positions_, title="before dimenfix")
+        print_layout(embedding, self.positions_, title="before dimenfix", active=active)
 
         # rotate and calculate labels position
         if self.feature_type_ == 'nominal':
             embedding = rotate(embedding, self.groups_)
 
-            print_layout(embedding, self.positions_, title="after dimenfix (rotate)")
+            print_layout(embedding, self.positions_, title="after dimenfix (rotate)", active=active)
 
             self.positions_ = compute_positions_nominal(embedding, self.groups_)
             self.intervals_ = compute_intervals(self.positions_, self.alpha_)
@@ -234,11 +256,10 @@ class DimenFix:
         if self.pulling_strategy_ == 'clipping':
             embedding = clipping_pull(embedding, self.intervals_)
         elif self.pulling_strategy_ == 'gaussian':
-            print('gaussian')
+            embedding = gaussian_pull(embedding, self.positions_, self.intervals_)
         elif self.pulling_strategy_ == 'rescale':
             embedding = rescale_pull(embedding, self.groups_, self.intervals_)
 
-        print_layout(embedding, self.positions_, title="after dimenfix (pull)")
+        print_layout(embedding, self.positions_, title="after dimenfix (pull)", active=active)
 
         return embedding
-
