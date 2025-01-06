@@ -4,7 +4,7 @@ import scipy.stats as st
 
 from log import print_layout, clean
 
-active = False
+active_log = False
 
 PULLING_TYPES = {'clipping', 'gaussian', 'rescale'}
 DATA_TYPES = {'nominal', 'ordinal'}
@@ -236,18 +236,18 @@ class DimenFix:
         # compute intervals
         self.intervals_ = compute_intervals(self.positions_, self.alpha_)
 
-        clean(active=active)
+        clean(active=active_log)
 
         return self
 
     def transform(self, embedding):
-        print_layout(embedding, self.positions_, title="before dimenfix", active=active)
+        print_layout(embedding, self.positions_, title="before dimenfix", active=active_log)
 
         # rotate and calculate labels position
         if self.feature_type_ == 'nominal':
             embedding = rotate(embedding, self.groups_)
 
-            print_layout(embedding, self.positions_, title="after dimenfix (rotate)", active=active)
+            print_layout(embedding, self.positions_, title="after dimenfix (rotate)", active=active_log)
 
             self.positions_ = compute_positions_nominal(embedding, self.groups_)
             self.intervals_ = compute_intervals(self.positions_, self.alpha_)
@@ -260,6 +260,6 @@ class DimenFix:
         elif self.pulling_strategy_ == 'rescale':
             embedding = rescale_pull(embedding, self.groups_, self.intervals_)
 
-        print_layout(embedding, self.positions_, title="after dimenfix (pull)", active=active)
+        print_layout(embedding, self.positions_, title="after dimenfix (pull)", active=active_log)
 
         return embedding

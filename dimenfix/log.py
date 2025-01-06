@@ -18,6 +18,7 @@ def print_layout(y, label, title=None, active=True):
         plt.scatter(y[:, 0], y[:, 1], c=label,
                     cmap='tab10', edgecolors='face', linewidths=0.5, s=12)
         plt.grid(linestyle='dotted')
+        plt.colorbar()
 
         if title is not None:
             plt.title(title)

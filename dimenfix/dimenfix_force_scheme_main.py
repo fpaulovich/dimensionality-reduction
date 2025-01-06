@@ -66,23 +66,23 @@ def main():
     label = np.array(raw.target).reshape(-1, 1)
     label = preprocessing.MinMaxScaler().fit_transform(label)
 
-    # fixed_feature = label[:, 0]
-    fixed_feature = X[:, 2]
+    fixed_feature = label[:, 0]
+    # fixed_feature = X[:, 2]
 
     start = timer()
     y = DimenFixForceScheme(max_it=500,
                             iterations_to_pull=10,
                             fixed_feature=fixed_feature,
-                            feature_type='ordinal',
-                            pulling_strategy='gaussian',
-                            alpha=1.0).fit_transform(X)
+                            feature_type='nominal',
+                            pulling_strategy='rescale',
+                            alpha=0.5).fit_transform(X)
     end = timer()
 
     print('ForceScheme took {0} to execute'.format(timedelta(seconds=end - start)))
 
     plt.figure()
     plt.scatter(y[:, 1], y[:, 0], c=fixed_feature,
-                cmap='viridis', edgecolors='face', linewidths=0.5, s=12)
+                cmap='tab10', edgecolors='face', linewidths=0.5, s=12)
     plt.grid(linestyle='dotted')
     plt.colorbar()
     plt.show()
