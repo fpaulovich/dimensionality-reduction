@@ -17,13 +17,12 @@ def main_tsne():
     X = raw.data.to_numpy()
     X = preprocessing.StandardScaler().fit_transform(X)
 
+    # define sample size
+    sample_size = int(len(X) * 0.2)
+
     # get a random sample
     random.seed(7)
-    sample_size = int(len(X) * 0.2)
-    indexes = random.sample(range(len(X)), sample_size)
-    X_sample = np.zeros((sample_size, len(X[0])))
-    for i in range(sample_size):
-        X_sample[i] = X[indexes[i]]
+    X_sample = X[random.sample(range(len(X)), sample_size), :]
 
     # project the sample
     y_sample = TSNE(n_components=2,
@@ -48,7 +47,7 @@ def main_tsne():
 
 
 def main_force():
-    raw = datasets.load_digits(as_frame=True)
+    raw = datasets.load_iris(as_frame=True)
     X = raw.data.to_numpy()
     X = preprocessing.StandardScaler().fit_transform(X)
 
@@ -58,13 +57,10 @@ def main_force():
 
     # get a random sample
     random.seed(7)
-    indexes = random.sample(range(len(X)), sample_size)
-    X_sample = np.zeros((sample_size, len(X[0])))
-    for i in range(sample_size):
-        X_sample[i] = X[indexes[i]]
+    X_sample = X[random.sample(range(len(X)), sample_size), :]
 
     start = timer()
-    lamp = Lamp().fit(X_sample=X_sample)
+    lamp = Lamp(nr_neighbors=10).fit(X_sample=X_sample)
     y = lamp.transform(X=X)
     end = timer()
 

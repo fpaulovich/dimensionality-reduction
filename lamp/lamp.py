@@ -1,3 +1,10 @@
+# Author: Fernando V. Paulovich -- <fpaulovich@gmail.com>
+# code inspired by https://github.com/lgnonato/LAMP/blob/master/lamp.py
+
+# This is an implementation of
+# P. Joia, D. Coimbra, J. A. Cuminato, F. V. Paulovich and L. G. Nonato, "Local Affine Multidimensional Projection,"
+# in IEEE Transactions on Visualization and Computer Graphics, vol. 17, no. 12, pp. 2563-2571, Dec. 2011.
+
 import numpy as np
 from numba import njit, prange
 from force.force_scheme import ForceScheme
