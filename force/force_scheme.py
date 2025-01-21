@@ -3,27 +3,13 @@ import math
 
 from numpy import random
 from numba import njit, prange
-from scipy.spatial import distance
 
-
-# @njit(parallel=False, fastmath=False)
-def create_distance_matrix(X, distance_function):
-    size = len(X)
-    distance_matrix = np.zeros(int(size * (size + 1) / 2), dtype=np.float32)
-
-    k = 0
-    for i in range(size):
-        for j in range(i, size):
-            distance_matrix[k] = distance_function(X[i], X[j])
-            k = k + 1
-
-    return distance_matrix
+from scipy.spatial.distance import pdist
 
 
 @njit(parallel=True, fastmath=False)
 def move2D(ins1, distance_matrix, projection, learning_rate):
     size = len(projection)
-    total = len(distance_matrix)
     error = 0
 
     for ins2 in prange(size):
@@ -32,10 +18,10 @@ def move2D(ins1, distance_matrix, projection, learning_rate):
             y1y2 = projection[ins2][1] - projection[ins1][1]
             dr2 = max(math.sqrt(x1x2 * x1x2 + y1y2 * y1y2), 0.0001)
 
-            # getting te index in the distance matrix and getting the value
+            # getting the index in the distance matrix and getting the value
             r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j)
             s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j)
-            d_original = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
+            d_original = distance_matrix[int(size * r + s - ((r + 2) * (r + 1)) / 2)]
 
             # calculate the movement
             delta = (d_original - dr2)
@@ -51,7 +37,6 @@ def move2D(ins1, distance_matrix, projection, learning_rate):
 @njit(parallel=True, fastmath=False)
 def move(ins1, distance_matrix, projection, learning_rate):
     size = len(projection)
-    total = len(distance_matrix)
     error = 0
 
     for ins2 in prange(size):
@@ -59,10 +44,10 @@ def move(ins1, distance_matrix, projection, learning_rate):
             v = projection[ins2] - projection[ins1]
             d_proj = max(np.linalg.norm(v), 0.0001)
 
-            # getting te index in the distance matrix and getting the value
+            # getting the index in the distance matrix and getting the value
             r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j)
             s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j)
-            d_original = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
+            d_original = distance_matrix[int(size * r + s - ((r + 2) * (r + 1)) / 2)]
 
             # calculate the movement
             delta = (d_original - d_proj)
@@ -108,9 +93,9 @@ class ForceScheme:
         self.n_components_ = n_components
         self.embedding_ = None
 
-    def _fit(self, X, y, distance_function):
+    def _fit(self, X, y, metric):
         # create a distance matrix
-        distance_matrix = create_distance_matrix(X, distance_function)
+        distance_matrix = pdist(X, metric)
         size = len(X)
 
         # set the random seed
@@ -144,8 +129,8 @@ class ForceScheme:
 
         return self.embedding_
 
-    def fit_transform(self, X, y=None, distance_function=distance.euclidean):
-        return self._fit(X, y, distance_function)
+    def fit_transform(self, X, y=None, metric='euclidean'):
+        return self._fit(X, y, metric)
 
-    def fit(self, X, y=None, distance_function=distance.euclidean):
-        return self._fit(X, y, distance_function)
+    def fit(self, X, y=None, metric='euclidean'):
+        return self._fit(X, y, metric)

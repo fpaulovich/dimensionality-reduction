@@ -9,7 +9,7 @@ from force.force_scheme import ForceScheme
 
 
 def main():
-    raw = datasets.load_digits(as_frame=True)
+    raw = datasets.load_iris(as_frame=True)
     X = raw.data.to_numpy()
     X = preprocessing.StandardScaler().fit_transform(X)
 
