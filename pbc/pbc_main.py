@@ -1,12 +1,11 @@
 import sklearn.datasets as datasets
 import matplotlib.pyplot as plt
 import numpy as np
-import math
 
 from timeit import default_timer as timer
 from datetime import timedelta
 from sklearn import preprocessing
-from force.pbc import PBC
+from pbc.pbc import PBC
 
 from sklearn.cluster import KMeans
 

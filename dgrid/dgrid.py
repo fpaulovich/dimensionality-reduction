@@ -1,3 +1,13 @@
+# Author: Fernando V. Paulovich -- <fpaulovich@gmail.com>
+#
+# Copyright 2024 Fernando V. Paulovich
+# License: BSD-3-Clause
+
+# If you use this implementation, please cite
+# G. M. Hilasaca, W. E. Marcílio-Jr, D. M. Eler, R. M. Martins and F. V. Paulovich, "A Grid-Based Method for Removing
+# Overlaps of Dimensionality Reduction Scatterplot Layouts," in IEEE Transactions on Visualization and Computer
+# Graphics, vol. 30, no. 8, pp. 5733-5749, Aug. 2024, doi: 10.1109/TVCG.2023.3309941.
+
 import math
 import numpy as np
 import time

@@ -1,3 +1,13 @@
+# Author: Fernando V. Paulovich -- <fpaulovich@gmail.com>
+#
+# Copyright 2024 Fernando V. Paulovich
+# License: BSD-3-Clause
+
+# If you use this implementation, please cite
+# Rosane Minghim, Fernando Vieira Paulovich, and Alneu de Andrade Lopes "Content-based text mapping using
+# multi-dimensional projections for exploration of document collections", Proc. SPIE 6060, Visualization and Data
+# Analysis 2006, 60600S (16 January 2006); https://doi.org/10.1117/12.650880
+
 import sklearn.datasets as datasets
 import matplotlib.pyplot as plt
 import numpy as np
