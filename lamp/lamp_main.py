@@ -22,7 +22,7 @@ import random
 import math
 
 
-def main_tsne():
+def main_sample_projection():
     raw = datasets.load_digits(as_frame=True)
     X = raw.data.to_numpy()
     X = preprocessing.StandardScaler().fit_transform(X)
@@ -35,12 +35,12 @@ def main_tsne():
     X_sample = X[random.sample(range(len(X)), sample_size), :]
 
     # project the sample
+    start = timer()
     y_sample = TSNE(n_components=2,
-                    perplexity=10,
+                    perplexity=12,
                     random_state=0).fit_transform(X_sample)
 
-    start = timer()
-    lamp = Lamp(nr_neighbors=10).fit(X_sample=X_sample,
+    lamp = Lamp(nr_neighbors=12).fit(X_sample=X_sample,
                                      y_sample=y_sample)
     y = lamp.transform(X=X)
     end = timer()
@@ -48,6 +48,9 @@ def main_tsne():
     print('Lamp took {0} to execute'.format(timedelta(seconds=end - start)))
 
     plt.figure()
+    plt.scatter(y_sample[:, 0], y_sample[:, 1], c='white',
+                edgecolors='black', linewidths=0.5, s=20)
+
     plt.scatter(y[:, 0], y[:, 1], c=raw.target,
                 cmap='Set1', edgecolors='face', linewidths=0.5, s=4)
     plt.grid(linestyle='dotted')
@@ -56,7 +59,7 @@ def main_tsne():
     return
 
 
-def main_force():
+def main_no_sample_projection():
     raw = datasets.load_iris(as_frame=True)
     X = raw.data.to_numpy()
     X = preprocessing.StandardScaler().fit_transform(X)
@@ -86,5 +89,5 @@ def main_force():
 
 
 if __name__ == "__main__":
-    main_tsne()
+    main_sample_projection()
     exit(0)

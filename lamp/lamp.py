@@ -13,29 +13,36 @@ import numpy as np
 from force.force_scheme import ForceScheme
 from sklearn.neighbors import KDTree
 
-epsilon = 1e-5
+epsilon = 1e-7
 
 
-def orthogonal_mapping(X, X_sample_, y_sample_, embedding, n_components, nr_neighbors, weights, indexes):
+def orthogonal_mapping(X, X_sample_, y_sample_, embedding, n_components, nr_neighbors, metric):
+    tree = KDTree(X_sample_, leaf_size=2, metric=metric)
+    dists, indexes = tree.query(X, k=nr_neighbors)
+    weights = 1.0 / (dists + epsilon)
+
     sample_data = np.zeros((nr_neighbors, len(X_sample_[0])))
     sample_embedding = np.zeros((nr_neighbors, len(y_sample_[0])))
 
     for i in range(len(X)):
-        for j in range(nr_neighbors):
-            sample_data[j] = X_sample_[indexes[i][j]]
-            sample_embedding[j] = y_sample_[indexes[i][j]]
+        if dists[i][0] < epsilon:
+            embedding[i] = y_sample_[indexes[i][0]]
+        else:
+            for j in range(nr_neighbors):
+                sample_data[j] = X_sample_[indexes[i][j]]
+                sample_embedding[j] = y_sample_[indexes[i][j]]
 
-        alpha = np.sum(weights[i])
-        x_tilde = np.dot(sample_data.T, weights[i].T) / alpha
-        y_tilde = np.dot(sample_embedding.T, weights[i].T) / alpha
-        x_hat = sample_data - x_tilde
-        y_hat = sample_embedding - y_tilde
-        D = np.diag(np.sqrt(weights[i]))
-        A = np.dot(D, x_hat)
-        B = np.dot(D, y_hat)
-        U, s, V = np.linalg.svd(np.dot(A.T, B), full_matrices=True)
-        M = np.dot(U[:, :n_components], V)
-        embedding[i] = np.dot((X[i] - x_tilde), M) + y_tilde
+            alpha = np.sum(weights[i])
+            x_tilde = np.dot(sample_data.T, weights[i].T) / alpha
+            y_tilde = np.dot(sample_embedding.T, weights[i].T) / alpha
+            x_hat = sample_data - x_tilde
+            y_hat = sample_embedding - y_tilde
+            D = np.diag(np.sqrt(weights[i]))
+            A = np.dot(D, x_hat)
+            B = np.dot(D, y_hat)
+            U, s, V = np.linalg.svd(np.dot(A.T, B), full_matrices=True)
+            M = np.dot(U[:, :n_components], V)
+            embedding[i] = np.dot((X[i] - x_tilde), M) + y_tilde
 
 
 class Lamp:
@@ -70,23 +77,29 @@ class Lamp:
             if len(X_sample) != len(y_sample):
                 raise ValueError('The X_sample and y_sample sizes needs to be the same.')
             self.y_sample_ = y_sample
+            self.n_components_ = len(self.y_sample_[0])
 
-        # centering data
-        self.X_sample_ = np.subtract(self.X_sample_, np.average(self.X_sample_, axis=0))
+        # centering sample data and projection
+        self.y_sample_center_ = np.average(self.y_sample_, axis=0)
+        self.y_sample_ = np.subtract(self.y_sample_, self.y_sample_center_)
+
+        self.X_sample_center_ = np.average(self.X_sample_, axis=0)
+        self.X_sample_ = np.subtract(self.X_sample_, self.X_sample_center_)
 
         return self
 
     def transform(self, X, metric='euclidean'):
         self.embedding_ = np.zeros((len(X), self.n_components_))
 
-        tree = KDTree(self.X_sample_, leaf_size=2, metric=metric)
-        dists, indexes = tree.query(X, k=self.nr_neighbors_)
-        weights = 1.0 / (dists + epsilon)
+        # centering the data using the sample data center
+        X = np.subtract(X, self.X_sample_center_)
 
+        # orthogonally map the new data X
         orthogonal_mapping(X, self.X_sample_, self.y_sample_, self.embedding_,
-                           self.n_components_, self.nr_neighbors_, weights, indexes)
+                           self.n_components_, self.nr_neighbors_, metric)
 
-        return self.embedding_
+        # adding the center of the sample projection back
+        return np.add(self.embedding_, self.y_sample_center_)
 
     def fit_transform(self, X, X_sample, y_sample=None, metric='euclidean'):
         self._fit(X_sample, y_sample, metric)
