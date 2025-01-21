@@ -10,20 +10,17 @@
 # doi: 10.1109/TVCG.2011.220.
 
 import numpy as np
-from numba import njit, prange
 from force.force_scheme import ForceScheme
 from sklearn.neighbors import KDTree
 
 epsilon = 1e-5
 
 
-@njit(parallel=False, fastmath=True)
-def orthogonal_mapping_aux(X, X_sample_, y_sample_, embedding, n_components, nr_neighbors, weights, indexes, begin,
-                           end):
+def orthogonal_mapping(X, X_sample_, y_sample_, embedding, n_components, nr_neighbors, weights, indexes):
     sample_data = np.zeros((nr_neighbors, len(X_sample_[0])))
     sample_embedding = np.zeros((nr_neighbors, len(y_sample_[0])))
 
-    for i in range(begin, end):
+    for i in range(len(X)):
         for j in range(nr_neighbors):
             sample_data[j] = X_sample_[indexes[i][j]]
             sample_embedding[j] = y_sample_[indexes[i][j]]
@@ -39,24 +36,6 @@ def orthogonal_mapping_aux(X, X_sample_, y_sample_, embedding, n_components, nr_
         U, s, V = np.linalg.svd(np.dot(A.T, B), full_matrices=True)
         M = np.dot(U[:, :n_components], V)
         embedding[i] = np.dot((X[i] - x_tilde), M) + y_tilde
-
-
-@njit(parallel=True, fastmath=False)
-def orthogonal_mapping(X, X_sample_, y_sample_, embedding, n_components, nr_neighbors, weights, indexes):
-    size = len(X)
-    nr_partitions = 5
-    step = int(size / nr_partitions)
-
-    for i in prange(nr_partitions):
-        begin = i * step
-        end = begin + step - 1
-        orthogonal_mapping_aux(X, X_sample_, y_sample_, embedding, n_components, nr_neighbors, weights, indexes,
-                               begin, end)
-
-    begin = (nr_partitions-1) * step
-    if size > (begin + step):
-        orthogonal_mapping_aux(X, X_sample_, y_sample_, embedding, n_components, nr_neighbors, weights, indexes,
-                               begin + step, size)
 
 
 class Lamp:
