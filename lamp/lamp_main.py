@@ -25,10 +25,10 @@ import math
 def main_sample_projection():
     raw = datasets.load_digits(as_frame=True)
     X = raw.data.to_numpy()
-    X = preprocessing.StandardScaler().fit_transform(X)
+    X = preprocessing.MinMaxScaler().fit_transform(X)
 
     # define sample size
-    sample_size = int(len(X) * 0.25)
+    sample_size = int(len(X) * 0.2)
 
     # get a random sample
     random.seed(7)
@@ -60,9 +60,9 @@ def main_sample_projection():
 
 
 def main_no_sample_projection():
-    raw = datasets.load_iris(as_frame=True)
+    raw = datasets.load_digits(as_frame=True)
     X = raw.data.to_numpy()
-    X = preprocessing.StandardScaler().fit_transform(X)
+    X = preprocessing.MinMaxScaler().fit_transform(X)
 
     # define sample size
     sample_size = int(math.sqrt(len(X)))
