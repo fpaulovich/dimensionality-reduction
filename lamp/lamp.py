@@ -21,16 +21,13 @@ def orthogonal_mapping(X, X_sample_, y_sample_, embedding, n_components, nr_neig
     dists, indexes = tree.query(X, k=nr_neighbors)
     weights = 1.0 / (dists + epsilon)
 
-    sample_data = np.zeros((nr_neighbors, len(X_sample_[0])))
-    sample_embedding = np.zeros((nr_neighbors, len(y_sample_[0])))
-
     for i in range(len(X)):
         if dists[i][0] < epsilon:
             embedding[i] = y_sample_[indexes[i][0]]
         else:
-            for j in range(nr_neighbors):
-                sample_data[j] = X_sample_[indexes[i][j]]
-                sample_embedding[j] = y_sample_[indexes[i][j]]
+            # copy only data of the nearest neighbors
+            sample_data = X_sample_[indexes[i], :]
+            sample_embedding = y_sample_[indexes[i], :]
 
             alpha = np.sum(weights[i])
             x_tilde = np.dot(sample_data.T, weights[i].T) / alpha
