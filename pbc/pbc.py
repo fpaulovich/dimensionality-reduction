@@ -1,134 +1,98 @@
+# Author: Fernando V. Paulovich -- <fpaulovich@gmail.com>
+#
+# Copyright 2024 Fernando V. Paulovich
+# License: BSD-3-Clause
+
+# If you use this implementation, please cite
+# F. V. Paulovich and R. Minghim, "Text Map Explorer: a Tool to Create and Explore Document Maps," Tenth International
+# Conference on Information Visualisation (IV'06), London, UK, 2006, pp. 245-251, doi: 10.1109/IV.2006.104.
+
 import numpy as np
 import math
 
-from numpy import random
-from numba import njit, prange
-from scipy.spatial import distance
-
-# 1. create clusters
-# 2. distance between instances in the same clusters is the original distance
-# 3. distance between elements of different clusters is the distance between clusters
-# 3.1. single, complete, and average link
-
-
-def create_distance_matrix(X, labels, distance_function):
-    size = len(X)
-    distance_matrix = np.zeros(int(size * (size + 1) / 2), dtype=np.float32)
-    total = len(distance_matrix)
-
-    for i in range(size):
-        for j in range(i, size):
-            drn = distance_function(X[i], X[j])
-
-            # getting te index in the distance matrix and getting the value
-            p = int(total - ((size - i) * (size - i + 1) / 2) + (j - i))
-
-            if labels[i] == labels[j]:  # instances in the same cluster
-                distance_matrix[p] = drn
-            else:
-                distance_matrix[p] = max(drn, distance_matrix[p]) * 2
-
-    return distance_matrix
-
-
-@njit(parallel=True, fastmath=False)
-def move(ins1, distance_matrix, projection, learning_rate):
-    size = len(projection)
-    total = len(distance_matrix)
-    error = 0
-
-    for ins2 in prange(size):
-        if ins1 != ins2:
-            x1x2 = projection[ins2][0] - projection[ins1][0]
-            y1y2 = projection[ins2][1] - projection[ins1][1]
-            dr2 = max(math.sqrt(x1x2 * x1x2 + y1y2 * y1y2), 0.0001)
-
-            # getting te index in the distance matrix and getting the value
-            r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j)
-            s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j)
-            drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
-
-            # calculate the movement
-            delta = (drn - dr2)
-            error += math.fabs(delta)
-
-            # moving
-            projection[ins2][0] += learning_rate * delta * (x1x2 / dr2)
-            projection[ins2][1] += learning_rate * delta * (y1y2 / dr2)
-
-    return error / size
-
-
-@njit(parallel=False, fastmath=False)
-def iteration(index, distance_matrix, projection, learning_rate):
-    size = len(projection)
-    error = 0
-
-    for i in range(size):
-        ins1 = index[i]
-        error += move(ins1, distance_matrix, projection, learning_rate)
-
-    return error / size
+from sklearn.cluster import KMeans
+from force.force_scheme import ForceScheme
 
 
 class PBC:
 
     def __init__(self,
-                 labels=None,
                  max_it=100,
                  learning_rate0=0.5,
                  decay=0.95,
                  tolerance=0.00001,
-                 seed=7):
+                 seed=7,
+                 n_components=2,
+                 cluster_factor=1):
 
-        self.labels_ = labels
         self.max_it_ = max_it
         self.learning_rate0_ = learning_rate0
         self.decay_ = decay
         self.tolerance_ = tolerance
         self.seed_ = seed
+        self.n_components_ = n_components
+        self.cluster_factor_ = cluster_factor
         self.embedding_ = None
 
-    def _fit(self, X, y, distance_function):
-        # create a distance matrix
-        distance_matrix= create_distance_matrix(X, self.labels_, distance_function)
-        size = len(X)
+    def _fit(self, X, metric):
+        # create clusters
+        n_clusters = int(math.sqrt(len(X)))
+        kmeans = KMeans(n_clusters=n_clusters,
+                        init='k-means++',
+                        algorithm='lloyd',
+                        random_state=self.seed_,
+                        n_init="auto").fit(X)
 
-        # set the random seed
-        np.random.seed(self.seed_)
+        # create indexes for the clusters
+        cluster_indexes = {}
+        for i in range(n_clusters):
+            cluster_indexes[i] = []
+        for i in range(len(kmeans.labels_)):
+            cluster_indexes[kmeans.labels_[i]].append(i)
 
-        # randomly initialize the projection
-        if y is None:
-            self.embedding_ = np.random.random((size, 2))
-        else:
-            self.embedding_ = y
+        # calculate cluster centers
+        cluster_centers = np.empty((n_clusters, len(X[0])))
+        for i in range(n_clusters):
+            cluster_centers[i] = np.mean(X[cluster_indexes[i], :], axis=0)
 
-        # create random index
-        index = np.random.permutation(size)
+        # project cluster centers
+        cluster_centers_projection = ForceScheme(max_it=self.max_it_,
+                                                 learning_rate0=self.learning_rate0_,
+                                                 decay=self.decay_,
+                                                 tolerance=self.tolerance_,
+                                                 seed=self.seed_,
+                                                 n_components=self.n_components_
+                                                 ).fit_transform(cluster_centers, metric=metric)
 
-        # iterate until max_it or if the error does not change more than the tolerance
-        error = math.inf
-        for k in range(self.max_it_):
-            learning_rate = self.learning_rate0_ * math.pow((1 - k / self.max_it_), self.decay_)
-            new_error = iteration(index, distance_matrix, self.embedding_, learning_rate)
+        # create final embedding
+        self.embedding_ = np.zeros((len(X), self.n_components_))
+        for i in range(n_clusters):
+            # project each cluster individually
+            cluster_data = X[cluster_indexes[i], :]
+            cluster_projection = ForceScheme(max_it=self.max_it_,
+                                             learning_rate0=self.learning_rate0_,
+                                             decay=self.decay_,
+                                             tolerance=self.tolerance_,
+                                             seed=self.seed_,
+                                             n_components=self.n_components_
+                                             ).fit_transform(cluster_data, metric=metric)
 
-            if math.fabs(new_error - error) < self.tolerance_:
-                break
+            # center the cluster projection
+            cluster_projection = np.subtract(cluster_projection, np.mean(cluster_projection, axis=0))
 
-            error = new_error
+            # scale the cluster projection by the cluster factor
+            cluster_projection = cluster_projection * self.cluster_factor_
 
-        # setting the min to (0,0)
-        min_x = min(self.embedding_[:, 0])
-        min_y = min(self.embedding_[:, 1])
-        for i in range(size):
-            self.embedding_[i][0] -= min_x
-            self.embedding_[i][1] -= min_y
+            # move the center of the cluster projection to the cluster center position
+            cluster_projection = np.add(cluster_projection, cluster_centers_projection[i])
+
+            for j in range(len(cluster_projection)):
+                self.embedding_[cluster_indexes[i][j]] = cluster_projection[j]
 
         return self.embedding_
 
-    def fit_transform(self, X, y=None, distance_function=distance.euclidean):
-        return self._fit(X, y, distance_function)
+    def fit_transform(self, X, y=None, metric='euclidean'):
+        return self._fit(X, metric)
 
-    def fit(self, X, y=None, distance_function=distance.euclidean):
-        return self._fit(X, y, distance_function)
-
+    def fit(self, X, y=None, metric='euclidean'):
+        return self._fit(X, metric)
