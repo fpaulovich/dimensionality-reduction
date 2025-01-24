@@ -5,8 +5,9 @@
 # code inspired by https://github.com/lgnonato/LAMP/blob/master/lamp.py
 
 # If you use this implementation, please cite
-# Paulovich FV, Silva CT, Nonato LG. Two-phase mapping for projecting massive data sets. IEEE Trans Vis Comput Graph.
-# 2010 Nov-Dec;16(6):1281-90. doi: 10.1109/TVCG.2010.207.
+# Paulovich FV, Nonato LG, Minghim R, Levkowitz H. Least square projection: a fast high-precision multidimensional
+# projection technique and its application to document mapping. IEEE Trans Vis Comput Graph. 2008 May-Jun;14(3):564-75.
+# doi: 10.1109/TVCG.2007.70443.
 
 import numpy as np
 from force.force_scheme import ForceScheme
