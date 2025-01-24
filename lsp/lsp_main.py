@@ -41,5 +41,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main_no_sample_projection()
+    main()
     exit(0)

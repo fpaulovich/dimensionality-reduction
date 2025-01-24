@@ -12,7 +12,6 @@
 import numpy as np
 from force.force_scheme import ForceScheme
 from sklearn.neighbors import KDTree
-import math
 import random
 
 epsilon = 1e-5
