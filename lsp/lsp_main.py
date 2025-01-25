@@ -15,8 +15,39 @@ import matplotlib.pyplot as plt
 from timeit import default_timer as timer
 from datetime import timedelta
 from sklearn import preprocessing
+import pandas as pd
+import numpy as np
 
 from lsp import LSP
+
+
+def song_data():
+    data_file = "../data/song_data.csv"
+    df = pd.read_csv(data_file, header=0, engine='python')
+
+    df = df.sort_values(by='song_popularity', ascending=True)
+    df = df.drop_duplicates('song_name', keep='last')  # drop duplicates, keep the largest song_popularity
+
+    label = np.array(df['song_popularity'].values).reshape(-1, 1)
+    label = preprocessing.MinMaxScaler().fit_transform(label)[:, 0]
+
+    df = df.drop(['song_name', 'song_popularity'], axis=1)
+    X = df.values
+    X = preprocessing.MinMaxScaler().fit_transform(X)
+
+    start = timer()
+    lsp = LSP(n_neighbors=10,
+              sample_size=int(len(X) * 0.2)).fit(X=X)
+    y = lsp.transform(X=X)
+    end = timer()
+
+    print('LSP took {0} to execute'.format(timedelta(seconds=end - start)))
+
+    plt.figure()
+    plt.scatter(y[:, 0], y[:, 1], c=label,
+                cmap='viridis', edgecolors='face', linewidths=0.5, s=4)
+    plt.grid(linestyle='dotted')
+    plt.show()
 
 
 def main():
@@ -42,5 +73,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    song_data()
     exit(0)
