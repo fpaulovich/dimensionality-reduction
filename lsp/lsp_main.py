@@ -20,12 +20,13 @@ from lsp import LSP
 
 
 def main():
-    raw = datasets.load_breast_cancer(as_frame=True)
+    raw = datasets.load_digits(as_frame=True)
     X = raw.data.to_numpy()
     X = preprocessing.MinMaxScaler().fit_transform(X)
 
     start = timer()
-    lsp = LSP(n_neighbors=20).fit(X=X)
+    lsp = LSP(n_neighbors=10,
+              sample_size=int(len(X) / 5)).fit(X=X)
     y = lsp.transform(X=X)
     end = timer()
 

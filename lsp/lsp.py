@@ -14,6 +14,8 @@ from force.force_scheme import ForceScheme
 from sklearn.neighbors import KDTree
 import random
 
+import scipy.linalg as scp
+
 epsilon = 1e-5
 
 
@@ -56,12 +58,17 @@ class LSP:
 
         # create the Laplacian matrix part of A
         tree = KDTree(X, leaf_size=2, metric=metric)
-        dists, indexes = tree.query(X, k=self.n_neighbors_)
+        dists, indexes = tree.query(X, k=self.n_neighbors_ + 1)
 
         A = np.zeros(((size + self.sample_size_), size))
         for i in range(size):
             for j in range(self.n_neighbors_):
-                A[i][indexes[i][j]] = -(1.0 / self.n_neighbors_)
+                if indexes[i][j] != i:
+                    A[i][indexes[i][j]] = 1.0
+                    A[indexes[i][j]][i] = 1.0
+
+        for i in range(size):
+            A[i] = A[i] * -1.0/np.sum(A[i])
             A[i][i] = 1.0
 
         # add the control points to A
@@ -74,7 +81,7 @@ class LSP:
             b[i+size] = self.y_sample_[i]
 
         # solving Ax = b in least square sense
-        self.embedding_ = np.linalg.solve(np.linalg.cholesky(np.dot(A.T, A)), np.dot(A.T, b))
+        self.embedding_ = scp.cho_solve(scp.cho_factor(np.dot(A.T, A)), np.dot(A.T, b))
 
         # adding the center of the sample projection back
         return self.embedding_
