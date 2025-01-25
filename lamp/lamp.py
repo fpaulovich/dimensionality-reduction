@@ -1,7 +1,7 @@
 # Author: Fernando V. Paulovich -- <fpaulovich@gmail.com>
 #
-# Copyright 2024 Fernando V. Paulovich
-# License: BSD-3-Clause
+# Copyright (c) 2024 Fernando V. Paulovich
+# License: MIT
 # code inspired by https://github.com/lgnonato/LAMP/blob/master/lamp.py
 
 # If you use this implementation, please cite

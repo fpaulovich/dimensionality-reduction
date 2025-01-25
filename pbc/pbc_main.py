@@ -1,7 +1,7 @@
 # Author: Fernando V. Paulovich -- <fpaulovich@gmail.com>
 #
-# Copyright 2024 Fernando V. Paulovich
-# License: BSD-3-Clause
+# Copyright (c) 2024 Fernando V. Paulovich
+# License: MIT
 
 # If you use this implementation, please cite
 # F. V. Paulovich and R. Minghim, "Text Map Explorer: a Tool to Create and Explore Document Maps," Tenth International

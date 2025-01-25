@@ -1,7 +1,7 @@
 # Author: Fernando V. Paulovich -- <fpaulovich@gmail.com>
 #
-# Copyright 2024 Fernando V. Paulovich
-# License: BSD-3-Clause
+# Copyright (c) 2024 Fernando V. Paulovich
+# License: MIT
 
 # If you use this implementation, please cite
 # G. M. Hilasaca, W. E. Marcílio-Jr, D. M. Eler, R. M. Martins and F. V. Paulovich, "A Grid-Based Method for Removing

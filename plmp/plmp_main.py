@@ -1,8 +1,7 @@
 # Author: Fernando V. Paulovich -- <fpaulovich@gmail.com>
 #
-# Copyright 2024 Fernando V. Paulovich
-# License: BSD-3-Clause
-# code inspired by https://github.com/lgnonato/LAMP/blob/master/lamp.py
+# Copyright (c) 2024 Fernando V. Paulovich
+# License: MIT
 
 # If you use this implementation, please cite
 # Paulovich FV, Silva CT, Nonato LG. Two-phase mapping for projecting massive data sets. IEEE Trans Vis Comput Graph.

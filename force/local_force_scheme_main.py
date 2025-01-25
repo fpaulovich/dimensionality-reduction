@@ -1,3 +1,8 @@
+# Author: Fernando V. Paulovich -- <fpaulovich@gmail.com>
+#
+# Copyright (c) 2024 Fernando V. Paulovich
+# License: MIT
+
 import sklearn.datasets as datasets
 import matplotlib.pyplot as plt
 import numpy as np

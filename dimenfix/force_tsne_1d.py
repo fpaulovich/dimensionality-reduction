@@ -1,3 +1,8 @@
+# Author: Fernando V. Paulovich -- <fpaulovich@gmail.com>
+#
+# Copyright (c) 2024 Fernando V. Paulovich
+# License: MIT
+
 from force.force_scheme import ForceScheme
 from sklearn.manifold import TSNE
 

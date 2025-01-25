@@ -1,3 +1,8 @@
+# Author: Fernando V. Paulovich -- <fpaulovich@gmail.com>
+#
+# Copyright (c) 2024 Fernando V. Paulovich
+# License: MIT
+
 import matplotlib.pyplot as plt
 import time
 import os
