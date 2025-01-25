@@ -56,7 +56,7 @@ class PLMP:
         # finding A where(D'.A = P') in a least-square sense
         D = self.X_sample_
         P = self.y_sample_
-        self.A = np.linalg.solve(np.linalg.cholesky(np.dot(D.T, D)), np.dot(D.T, P))
+        self.A = np.linalg.solve(np.dot(D.T, D), np.dot(D.T, P))
 
         return self
 
