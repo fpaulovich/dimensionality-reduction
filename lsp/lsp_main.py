@@ -26,7 +26,7 @@ def main():
 
     start = timer()
     lsp = LSP(n_neighbors=10,
-              sample_size=int(len(X) / 5)).fit(X=X)
+              sample_size=int(len(X) * 0.2)).fit(X=X)
     y = lsp.transform(X=X)
     end = timer()
 

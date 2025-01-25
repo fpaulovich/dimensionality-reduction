@@ -14,7 +14,8 @@ from force.force_scheme import ForceScheme
 from sklearn.neighbors import KDTree
 import random
 
-import scipy.linalg as scp
+from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse.linalg import spsolve
 
 epsilon = 1e-5
 
@@ -36,7 +37,7 @@ class LSP:
     def _fit(self, X, metric):
         # define sample size
         if self.sample_size_ == 0:
-            self.sample_size_ = int(len(X) / 10)
+            self.sample_size_ = int(len(X) * 0.1)
 
         # get a random sample
         random.seed(self.seed_)
@@ -60,28 +61,32 @@ class LSP:
         tree = KDTree(X, leaf_size=2, metric=metric)
         dists, indexes = tree.query(X, k=self.n_neighbors_ + 1)
 
-        A = np.zeros(((size + self.sample_size_), size))
+        # create the laplacian matrix part
+        A = lil_matrix(((size + self.sample_size_), size))
         for i in range(size):
             for j in range(self.n_neighbors_):
-                if indexes[i][j] != i:
-                    A[i][indexes[i][j]] = 1.0
-                    A[indexes[i][j]][i] = 1.0
+                A[(i, indexes[i][j])] = 1.0/(dists[i][j] + epsilon)
+                A[(indexes[i][j], i)] = 1.0/(dists[i][j] + epsilon)
+            A[(i, i)] = 1.0
 
-        for i in range(size):
-            A[i] = A[i] * -1.0/np.sum(A[i])
-            A[i][i] = 1.0
-
-        # add the control points to A
+        # add the control points equations
         for i in range(self.sample_size_):
-            A[i+size][self.sample_index_[i]] = 1.0
+            A[(i + size, self.sample_index_[i])] = 1.0
+
+        # normalize so the summation of each line of the Laplacian is zero
+        A = csr_matrix(A)
+        for i in range(size):
+            A[i] = csr_matrix.dot(A[i], -1.0/(csr_matrix.sum(A[i])-1.0))
+            A[(i, i)] = 1.0
 
         # create matrix b
-        b = np.zeros(((size + self.sample_size_), self.n_components_))
+        b = lil_matrix(((size + self.sample_size_), self.n_components_))
         for i in range(self.sample_size_):
             b[i+size] = self.y_sample_[i]
+        b = csr_matrix(b)
 
-        # solving Ax = b in least square sense
-        self.embedding_ = scp.cho_solve(scp.cho_factor(np.dot(A.T, A)), np.dot(A.T, b))
+        # solving A^t.Ax = A^t.b in least square sense
+        self.embedding_ = spsolve(csr_matrix.dot(A.T, A), csr_matrix.dot(A.T, b)).toarray()
 
         # adding the center of the sample projection back
         return self.embedding_
