@@ -65,8 +65,8 @@ class LSP:
         A = lil_matrix(((size + self.sample_size_), size))
         for i in range(size):
             for j in range(self.n_neighbors_):
-                A[(i, indexes[i][j])] = 1.0/(dists[i][j] + epsilon)
-                A[(indexes[i][j], i)] = 1.0/(dists[i][j] + epsilon)
+                A[(i, indexes[i][j])] = 1.0 / (dists[i][j] + epsilon)
+                A[(indexes[i][j], i)] = 1.0 / (dists[i][j] + epsilon)
             A[(i, i)] = 1.0
 
         # add the control points equations
@@ -76,13 +76,13 @@ class LSP:
         # normalize so the summation of each line of the Laplacian is zero
         A = csr_matrix(A)
         for i in range(size):
-            A[i] = csr_matrix.dot(A[i], -1.0/(csr_matrix.sum(A[i])-1.0))
+            A[i] = csr_matrix.dot(A[i], -1.0 / (csr_matrix.sum(A[i]) - 1.0))
             A[(i, i)] = 1.0
 
         # create matrix b
         b = lil_matrix(((size + self.sample_size_), self.n_components_))
         for i in range(self.sample_size_):
-            b[i+size] = self.y_sample_[i]
+            b[i + size] = self.y_sample_[i]
         b = csr_matrix(b)
 
         # solving A^t.Ax = A^t.b in least square sense
