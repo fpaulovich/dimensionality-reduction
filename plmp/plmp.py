@@ -73,7 +73,7 @@ class PLMP:
 
     def fit_transform(self, X, X_sample, y_sample=None, metric='euclidean'):
         self._fit(X_sample, y_sample, metric)
-        return self.transform(X, metric)
+        return self.transform(X)
 
     def fit(self, X_sample, y_sample=None, metric='euclidean'):
         return self._fit(X_sample, y_sample, metric)
