@@ -16,8 +16,10 @@ from datetime import timedelta
 from sklearn import preprocessing
 import pandas as pd
 import numpy as np
+import random
 
 from lsp import LSP
+from sklearn.manifold import TSNE
 
 
 def song_data():
@@ -49,7 +51,7 @@ def song_data():
     plt.show()
 
 
-def main():
+def main_no_sample_projection():
     raw = datasets.load_digits(as_frame=True)
     X = raw.data.to_numpy()
     X = preprocessing.MinMaxScaler().fit_transform(X)
@@ -71,6 +73,41 @@ def main():
     return
 
 
+def main_sample_projection():
+    raw = datasets.load_digits(as_frame=True)
+    X = raw.data.to_numpy()
+    X = preprocessing.MinMaxScaler().fit_transform(X)
+
+    # define sample size
+    sample_size = int(len(X) * 0.2)
+
+    # get a random sample
+    random.seed(7)
+    X_sample = X[random.sample(range(len(X)), sample_size), :]
+
+    # project the sample
+    start = timer()
+    y_sample = TSNE(n_components=2,
+                    perplexity=10,
+                    random_state=0).fit_transform(X_sample)
+
+    lsp = LSP(n_neighbors=10).fit(X=X,
+                                  X_sample=X_sample,
+                                  y_sample=y_sample)
+    y = lsp.transform(X=X)
+    end = timer()
+
+    print('LSP took {0} to execute'.format(timedelta(seconds=end - start)))
+
+    plt.figure()
+    plt.scatter(y[:, 0], y[:, 1], c=raw.target,
+                cmap='Set1', edgecolors='face', linewidths=0.5, s=4)
+    plt.grid(linestyle='dotted')
+    plt.show()
+
+    return
+
+
 if __name__ == "__main__":
-    song_data()
+    main_sample_projection()
     exit(0)

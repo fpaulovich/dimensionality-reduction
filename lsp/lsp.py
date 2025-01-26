@@ -32,21 +32,38 @@ class LSP:
         self.sample_size_ = sample_size
         self.seed_ = seed
         self.embedding_ = None
+        self.X_sample_ = None
+        self.y_sample_ = None
+        self.sample_index_ = None
 
-    def _fit(self, X, metric):
+    def _fit(self, X, X_sample, y_sample, metric):
         # define sample size
         if self.sample_size_ == 0:
             self.sample_size_ = int(len(X) * 0.1)
 
-        # get a random sample
-        random.seed(self.seed_)
-        self.sample_index_ = random.sample(range(len(X)), self.sample_size_)
-        self.X_sample_ = X[self.sample_index_, :]
+        if len(X) < self.n_neighbors_:
+            raise ValueError('The n_neighbors need to be small than the X.')
 
-        # project sample using ForceScheme
-        self.y_sample_ = ForceScheme(max_it=100,
-                                     n_components=self.n_components_
-                                     ).fit_transform(self.X_sample_, metric=metric)
+        # if sample is not provided, create a sample
+        if X_sample is None:
+            # get a random sample
+            random.seed(self.seed_)
+            self.sample_index_ = random.sample(range(len(X)), self.sample_size_)
+            self.X_sample_ = X[self.sample_index_, :]
+        else:
+            self.X_sample_ = X_sample
+            self.sample_size_ = len(self.X_sample_)
+
+        # if sample projection is not provided, project using ForceScheme
+        if y_sample is None:
+            self.y_sample_ = ForceScheme(max_it=100,
+                                         n_components=self.n_components_
+                                         ).fit_transform(self.X_sample_, metric=metric)
+        else:
+            if len(X_sample) != len(y_sample):
+                raise ValueError('The X_sample and y_sample sizes needs to be the same.')
+            self.y_sample_ = y_sample
+            self.n_components_ = len(self.y_sample_[0])
 
         return self
 
@@ -56,7 +73,7 @@ class LSP:
         # creating the final embedding
         self.embedding_ = np.zeros((size, self.n_components_))
 
-        # create the Laplacian matrix part of A
+        # create the Laplacian part of A
         tree = KDTree(X, leaf_size=2, metric=metric)
         dists, indexes = tree.query(X, k=self.n_neighbors_ + 1)
 
@@ -67,6 +84,10 @@ class LSP:
                 A[(i, indexes[i][j])] = 1.0 / (dists[i][j] + epsilon)
                 A[(indexes[i][j], i)] = 1.0 / (dists[i][j] + epsilon)
             A[(i, i)] = 1.0
+
+        # if sample is provided, find the indexes for control points
+        if self.sample_index_ is None:
+            self.sample_index_ = np.ravel(tree.query(self.X_sample_, k=1, return_distance=False))
 
         # add the control points equations
         for i in range(self.sample_size_):
@@ -90,9 +111,9 @@ class LSP:
         # adding the center of the sample projection back
         return self.embedding_
 
-    def fit_transform(self, X, metric='euclidean'):
-        self._fit(X, metric)
+    def fit_transform(self, X, X_sample=None, y_sample=None, metric='euclidean'):
+        self._fit(X, X_sample, y_sample, metric)
         return self.transform(X, metric)
 
-    def fit(self, X, metric='euclidean'):
-        return self._fit(X, metric)
+    def fit(self, X, X_sample=None, y_sample=None, metric='euclidean'):
+        return self._fit(X, X_sample, y_sample, metric)
