@@ -90,8 +90,9 @@ class LSP:
             self.sample_index_ = np.ravel(tree.query(self.X_sample_, k=1, return_distance=False))
 
         # add the control points equations
+        weight = 20.0  # define the strength to map a control point to its original position
         for i in range(self.sample_size_):
-            A[(i + size, self.sample_index_[i])] = 1.0
+            A[(i + size, self.sample_index_[i])] = weight
 
         # normalize so the summation of each line of the Laplacian is zero
         A = csr_matrix(A)
@@ -102,7 +103,7 @@ class LSP:
         # create matrix b
         b = lil_matrix(((size + self.sample_size_), self.n_components_))
         for i in range(self.sample_size_):
-            b[i + size] = self.y_sample_[i]
+            b[i + size] = weight * self.y_sample_[i]
         b = csr_matrix(b)
 
         # solving A^t.Ax = A^t.b in least square sense
