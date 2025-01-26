@@ -24,19 +24,15 @@ import pandas as pd
 import numpy as np
 
 
-def song_data():
-    data_file = "../data/song_data.csv"
-    df = pd.read_csv(data_file, header=0, engine='python')
+def file_data():
+    input_file = "../data/cbr-ilp-ir.csv"
+    df = pd.read_csv(input_file, header=0, sep='[;,]', engine='python')
 
-    df = df.sort_values(by='song_popularity', ascending=True)
-    df = df.drop_duplicates('song_name', keep='last')  # drop duplicates, keep the largest song_popularity
+    label = df[df.columns[len(df.columns) - 1]]  # get the last column as labels
+    df = df.drop(labels='label', axis=1)  # removing the column class
+    df = df.drop(labels='id', axis=1)  # removing the id class
 
-    label = np.array(df['song_popularity'].values).reshape(-1, 1)
-    label = preprocessing.MinMaxScaler().fit_transform(label)[:, 0]
-
-    df = df.drop(['song_name', 'song_popularity'], axis=1)
-    X = df.values
-    X = preprocessing.MinMaxScaler().fit_transform(X)
+    X = preprocessing.StandardScaler().fit_transform(df.values)
 
     # define sample size
     sample_size = int(len(X) * 0.2)
@@ -58,8 +54,10 @@ def song_data():
     print('Lamp took {0} to execute'.format(timedelta(seconds=end - start)))
 
     plt.figure()
+    plt.scatter(y_sample[:, 0], y_sample[:, 1], c='white',
+                edgecolors='black', linewidths=0.5, s=20)
     plt.scatter(y[:, 0], y[:, 1], c=label,
-                cmap='viridis', edgecolors='face', linewidths=0.5, s=4)
+                cmap='Dark2', edgecolors='face', linewidths=0.25, s=5)
     plt.grid(linestyle='dotted')
     plt.show()
 
@@ -131,5 +129,5 @@ def main_no_sample_projection():
 
 
 if __name__ == "__main__":
-    song_data()
+    file_data()
     exit(0)
