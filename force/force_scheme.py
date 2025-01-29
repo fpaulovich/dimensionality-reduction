@@ -14,12 +14,56 @@ import math
 from numpy import random
 from numba import njit, prange
 
-from scipy.spatial.distance import pdist
+from scipy.spatial import distance
+
+
+def get_distance_function(metric):
+    match metric:
+        case 'braycurtis':
+            return distance.braycurtis
+        case 'canberra':
+            return distance.canberra
+        case 'chebyshev':
+            return distance.chebyshev
+        case 'cityblock':
+            return distance.cityblock
+        case 'correlation':
+            return distance.correlation
+        case 'cosine':
+            return distance.cosine
+        case 'euclidean':
+            return distance.euclidean
+        case 'jaccard':
+            return distance.jaccard
+        case 'minkowski':
+            return distance.minkowski
+        case 'sqeuclidean':
+            return distance.sqeuclidean
+        case _:
+            raise ValueError('Distance metric not supported.')
+
+
+# @njit(parallel=True, fastmath=False)
+def create_distance_matrix(X, metric):
+    size = len(X)
+    total = int(size * (size + 1) / 2)
+    distance_matrix = np.zeros(total, dtype=np.float32)
+
+    distance_function = get_distance_function(metric)
+
+    for i in prange(size):
+        for j in range(i, size):
+            r, s = (i, j) if i < j else (j, i)  # r = min(i,j), s = min(i,j)
+            k = int(total - ((size - r) * (size - r + 1) / 2) + (s - r))
+            distance_matrix[k] = distance_function(X[i], X[j])
+
+    return distance_matrix
 
 
 @njit(parallel=True, fastmath=False)
 def move2D(ins1, distance_matrix, projection, learning_rate):
     size = len(projection)
+    total = len(distance_matrix)
     error = 0
 
     for ins2 in prange(size):
@@ -29,9 +73,8 @@ def move2D(ins1, distance_matrix, projection, learning_rate):
             dr2 = max(math.sqrt(x1x2 * x1x2 + y1y2 * y1y2), 0.0001)
 
             # getting the index in the distance matrix and getting the value
-            r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j)
-            s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j)
-            d_original = distance_matrix[int(size * r + s - ((r + 2) * (r + 1)) / 2)]
+            r, s = (ins1, ins2) if ins1 < ins2 else (ins2, ins1)  # r = min(i,j), s = min(i,j)
+            d_original = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
 
             # calculate the movement
             delta = (d_original - dr2)
@@ -47,6 +90,7 @@ def move2D(ins1, distance_matrix, projection, learning_rate):
 @njit(parallel=True, fastmath=False)
 def move(ins1, distance_matrix, projection, learning_rate):
     size = len(projection)
+    total = len(distance_matrix)
     error = 0
 
     for ins2 in prange(size):
@@ -55,9 +99,8 @@ def move(ins1, distance_matrix, projection, learning_rate):
             d_proj = max(np.linalg.norm(v), 0.0001)
 
             # getting the index in the distance matrix and getting the value
-            r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j)
-            s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j)
-            d_original = distance_matrix[int(size * r + s - ((r + 2) * (r + 1)) / 2)]
+            r, s = (ins1, ins2) if ins1 < ins2 else (ins2, ins1)  # r = min(i,j), s = min(i,j)
+            d_original = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
 
             # calculate the movement
             delta = (d_original - d_proj)
@@ -91,7 +134,8 @@ class ForceScheme:
                  max_it=100,
                  learning_rate0=0.5,
                  decay=0.95,
-                 tolerance=0.00001,
+                 tolerance=0.0001,
+                 n_iter_without_progress=10,
                  seed=7,
                  n_components=2):
 
@@ -99,14 +143,16 @@ class ForceScheme:
         self.learning_rate0_ = learning_rate0
         self.decay_ = decay
         self.tolerance_ = tolerance
+        self.n_iter_without_progress_ = n_iter_without_progress
         self.seed_ = seed
         self.n_components_ = n_components
         self.embedding_ = None
 
     def _fit(self, X, y, metric):
-        # create a distance matrix
-        distance_matrix = pdist(X, metric)
         size = len(X)
+
+        # create a distance matrix
+        distance_matrix = create_distance_matrix(X, metric)
 
         # set the random seed
         np.random.seed(self.seed_)
@@ -125,17 +171,23 @@ class ForceScheme:
 
         # iterate until max_it or if the error does not change more than the tolerance
         error = math.inf
+        iter_without_progress = 0
         for k in range(self.max_it_):
             learning_rate = self.learning_rate0_ * math.pow((1 - k / self.max_it_), self.decay_)
             new_error = iteration(index, distance_matrix, self.embedding_, learning_rate, self.n_components_)
 
             if math.fabs(new_error - error) < self.tolerance_:
+                iter_without_progress = iter_without_progress + 1
+            else:
+                iter_without_progress = 0
+
+            if iter_without_progress >= self.n_iter_without_progress_:
                 break
 
             error = new_error
 
-        # setting the min to (0,0)
-        self.embedding_ = self.embedding_ - np.amin(self.embedding_, axis=0)
+        # centering projection
+        self.embedding_ = self.embedding_ - np.mean(self.embedding_, axis=0)
 
         return self.embedding_
 
