@@ -11,11 +11,44 @@
 import sklearn.datasets as datasets
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 from timeit import default_timer as timer
 from datetime import timedelta
 from sklearn import preprocessing
 from force.force_scheme import ForceScheme
+
+
+def file_data():
+    # ForceScheme took 0:01:50.905411 to execute
+    # Number iterations: 99
+    # Error: 0.22554391757561443
+    # ForceScheme took 0:05:47.876620 to execute
+
+    data_file = "../data/song_data.csv"
+    df = pd.read_csv(data_file, header=0, engine='python')
+
+    df = df.sort_values(by='song_popularity', ascending=True)
+    df = df.drop_duplicates('song_name', keep='last')  # drop duplicates, keep the largest song_popularity
+
+    label = np.array(df['song_popularity'].values).reshape(-1, 1)
+    label = preprocessing.MinMaxScaler().fit_transform(label)[:, 0]
+
+    df = df.drop(['song_name', 'song_popularity'], axis=1)
+    X = df.values
+    X = preprocessing.MinMaxScaler().fit_transform(X)
+
+    start = timer()
+    y = ForceScheme(max_it=100).fit_transform(X, metric='euclidean')
+    end = timer()
+
+    print('ForceScheme took {0} to execute'.format(timedelta(seconds=end - start)))
+
+    plt.figure()
+    plt.scatter(y[:, 0], y[:, 1], c=label,
+                cmap='Dark2', edgecolors='black', linewidths=0.25, s=10)
+    plt.grid(linestyle='dotted')
+    plt.show()
 
 
 def main():
@@ -39,5 +72,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    file_data()
     exit(0)

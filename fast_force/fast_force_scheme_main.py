@@ -14,8 +14,12 @@ from datetime import timedelta
 from sklearn import preprocessing
 from fast_force_scheme import FastForceScheme
 
+from metrics import stress, neighborhood_preservation
 
-def file_data():  # 0:03:55.414676
+from force.force_scheme import ForceScheme
+
+
+def file_data():
     data_file = "../data/song_data.csv"
     df = pd.read_csv(data_file, header=0, engine='python')
 
@@ -48,10 +52,20 @@ def main():
     X = preprocessing.StandardScaler().fit_transform(X)
 
     start = timer()
-    y = FastForceScheme(max_it=100).fit_transform(X, metric='euclidean')
+    y = ForceScheme(max_it=100).fit_transform(X, metric='euclidean')
     end = timer()
 
     print('ForceScheme took {0} to execute'.format(timedelta(seconds=end - start)))
+    print('stress: ', stress(X, y, metric='euclidean'))
+    print('neighborhood_preservation: ', neighborhood_preservation(X, y, nr_neighbors=10, metric='euclidean'))
+
+    start = timer()
+    y = FastForceScheme(max_it=100).fit_transform(X, metric='euclidean')
+    end = timer()
+
+    print('Fast ForceScheme took {0} to execute'.format(timedelta(seconds=end - start)))
+    print('stress: ', stress(X, y, metric='euclidean'))
+    print('neighborhood_preservation: ', neighborhood_preservation(X, y, nr_neighbors=10, metric='euclidean'))
 
     plt.figure()
     plt.scatter(y[:, 0], y[:, 1], c=raw.target,
@@ -63,5 +77,5 @@ def main():
 
 
 if __name__ == "__main__":
-    file_data()
+    main()
     exit(0)
