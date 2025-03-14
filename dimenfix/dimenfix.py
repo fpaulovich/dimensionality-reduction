@@ -9,6 +9,8 @@ import scipy.stats as st
 
 from log import print_layout, clean
 
+from sklearn.preprocessing import LabelEncoder
+
 active_log = False
 
 PULLING_TYPES = {'clipping', 'gaussian', 'rescale'}
@@ -109,14 +111,6 @@ def rotate(embedding, groups):
     embedding = embedding - np.amin(embedding, axis=0)
 
     return embedding
-
-
-def compute_positions_ordinal(fixed_feature):
-    min_val = min(fixed_feature)
-    max_val = max(fixed_feature)
-
-    # normalizing the fixed feature to [0,1]
-    return (fixed_feature - min_val) / (max_val - min_val)
 
 
 # calculate adaptively intervals according to the features values
@@ -230,13 +224,14 @@ class DimenFix:
 
         # if feature is nominal, create groups of instances based on the fixed_feature
         if self.feature_type_ == 'nominal':
+            fixed_feature = LabelEncoder().fit_transform(fixed_feature)
             self.groups_ = split_groups(fixed_feature)
 
         # compute positions
         if self.feature_type_ == 'nominal':
             self.positions_ = compute_positions_nominal(embedding, self.groups_)
         elif self.feature_type_ == 'ordinal':
-            self.positions_ = compute_positions_ordinal(fixed_feature)
+            self.positions_ = fixed_feature
 
         # compute intervals
         self.intervals_ = compute_intervals(self.positions_, self.alpha_)
@@ -257,6 +252,18 @@ class DimenFix:
             self.positions_ = compute_positions_nominal(embedding, self.groups_)
             self.intervals_ = compute_intervals(self.positions_, self.alpha_)
 
+        # center embedding
+        embedding_mean = np.mean(embedding, axis=0)
+        embedding = embedding - embedding_mean
+
+        # scale embedding to match the intervals
+        min_interval = np.min(self.intervals_)
+        max_interval = np.max(self.intervals_)
+        min_fix_coord = np.min(embedding, axis=0)[0]
+        max_fix_coord = np.max(embedding, axis=0)[0]
+        scale = (max_interval - min_interval) / (max_fix_coord - min_fix_coord)
+        embedding = (embedding * scale) + ((max_interval + min_interval) / 2)
+
         # pull
         if self.pulling_strategy_ == 'clipping':
             embedding = clipping_pull(embedding, self.intervals_)
@@ -264,6 +271,11 @@ class DimenFix:
             embedding = gaussian_pull(embedding, self.positions_, self.intervals_)
         elif self.pulling_strategy_ == 'rescale':
             embedding = rescale_pull(embedding, self.groups_, self.intervals_)
+
+        # restore to original scale if data is nominal
+        if self.feature_type_ == 'nominal':
+            embedding = embedding - np.mean(embedding, axis=0)
+            embedding = (embedding / scale) + embedding_mean
 
         print_layout(embedding, self.positions_, title="after dimenfix (pull)", active=active_log)
 
