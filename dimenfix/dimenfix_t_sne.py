@@ -425,14 +425,14 @@ def _gradient_descent(
 
         # pull  (x-coordinate is fixed)
         if dimenfix is not None and (i + 1) % iterations_to_pull == 0:
-            p = p.reshape(int(len(p) / 2), 2)
+            p = p.reshape(int(len(p) / args[3]), args[3])
             p = dimenfix.transform(p)
             p = p.ravel()
 
         if check_convergence:
             # last pull after convergence
             if dimenfix is not None:
-                p = p.reshape(int(len(p) / 2), 2)
+                p = p.reshape(int(len(p) / args[3]), args[3])
                 p = dimenfix.transform(p)
                 p = p.ravel()
 

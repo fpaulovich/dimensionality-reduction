@@ -36,7 +36,7 @@ def split_groups(label):
 
 def calculate_centroids(embedding, groups):
     nr_centroids = len(groups)
-    centroids = np.zeros((nr_centroids, 2), dtype=np.float32)
+    centroids = np.zeros((nr_centroids, embedding.shape[1]), dtype=np.float32)
 
     for i in range(nr_centroids):
         for j in range(len(groups[i])):

@@ -37,7 +37,7 @@ def test_rotation():
 
 
 def main():
-    raw = datasets.load_iris(as_frame=True)
+    raw = datasets.load_digits(as_frame=True)
 
     X = raw.data.to_numpy()
     X = preprocessing.MinMaxScaler().fit_transform(X)
@@ -48,10 +48,11 @@ def main():
     # fixed_feature = X[:, 2]
 
     start = timer()
-    y = DimenFixForceScheme(max_it=500,
+    y = DimenFixForceScheme(n_components=2,
+                            max_it=500,
                             iterations_to_pull=10,
                             fixed_feature=fixed_feature,
-                            feature_type='ordinal',
+                            feature_type='nominal',
                             pulling_strategy='gaussian',
                             alpha=1.0).fit_transform(X)
     end = timer()
@@ -63,6 +64,40 @@ def main():
                 cmap='tab10', edgecolors='face', linewidths=0.5, s=12)
     plt.grid(linestyle='dotted')
     plt.colorbar()
+    plt.show()
+
+    return
+
+
+def main_3D():
+    raw = datasets.load_digits(as_frame=True)
+
+    X = raw.data.to_numpy()
+    X = preprocessing.MinMaxScaler().fit_transform(X)
+
+    label = np.array(raw.target).reshape(-1, 1)
+    # label = preprocessing.MinMaxScaler().fit_transform(label)
+
+    fixed_feature = label[:, 0]
+    # fixed_feature = X[:, 2]
+
+    start = timer()
+    y = DimenFixForceScheme(n_components=3,
+                            max_it=500,
+                            iterations_to_pull=10,
+                            fixed_feature=fixed_feature,
+                            feature_type='nominal',
+                            pulling_strategy='rescale',
+                            alpha=1.0).fit_transform(X)
+    end = timer()
+
+    print('DimenFixForceScheme took {0} to execute'.format(timedelta(seconds=end - start)))
+
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    ax.scatter3D(y[:, 0], y[:, 1], y[:, 2], c=raw.target,
+                cmap='Set1', edgecolors='face', linewidths=0.5, s=4)
+    plt.grid(linestyle='dotted')
     plt.show()
 
     return
