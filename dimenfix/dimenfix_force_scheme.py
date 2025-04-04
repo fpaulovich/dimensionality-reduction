@@ -155,7 +155,7 @@ class DimenFixForceScheme:
     def _fit(self, X, y, metric):
         # create a distance matrix
         distance_matrix = create_distance_matrix(X, metric)
-        distance_matrix = (distance_matrix - min(distance_matrix)) / (max(distance_matrix) - min(distance_matrix))
+        # distance_matrix = (distance_matrix - min(distance_matrix)) / (max(distance_matrix) - min(distance_matrix))
         size = len(X)
 
         # Processing the fixed feature

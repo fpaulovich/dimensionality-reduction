@@ -37,7 +37,7 @@ def test_rotation():
 
 
 def main():
-    raw = datasets.load_digits(as_frame=True)
+    raw = datasets.load_breast_cancer(as_frame=True)
 
     X = raw.data.to_numpy()
     X = preprocessing.MinMaxScaler().fit_transform(X)
